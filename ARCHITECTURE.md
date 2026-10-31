@@ -64,7 +64,7 @@ flowchart LR
 
 ```
 fluentpath/
-├─ site/                  ← поточний прототип, готовий до деплою (один index.html)
+├─ docs/                  ← поточний прототип, готовий до деплою (GitHub Pages)
 ├─ src/
 │  ├─ app/                маршрутизація, layout, тема
 │  ├─ features/           екрани: dashboard, placement, lesson, speaking, listening,
@@ -319,7 +319,7 @@ Authorization: Bearer <Supabase access JWT>
 
 ### Зараз: пряме завантаження
 
-1. Папка `site/` містить готовий сайт: `index.html`, іконки, маніфест, `_headers`.
+1. Папка `docs/` містить готовий сайт: `index.html`, іконки, маніфест, `_headers`.
 1. У Cloudflare Pages створюється проєкт через Direct Upload, і папка перетягується в браузер.
 1. Сайт отримує адресу `.pages.dev` з HTTPS. Оновлення — нове завантаження папки.
 
