@@ -38,6 +38,20 @@ GameConfig.Plots = {
 	Depth = 190, -- local Z
 	BoulevardWidth = 64,
 	Spacing = 145, -- distance between plot centres along a side
+	CenterGap = 190, -- free space in the middle of the map for the Mega Market
+}
+
+-- Selling showroom cars to NPC buyers
+GameConfig.Sales = {
+	MinPriceRate = 0.5, -- listing price limits relative to market value
+	MaxPriceRate = 3.0,
+	OfferTimeoutSeconds = 20,
+	SpawnIntervalSeconds = { 10, 22 }, -- per plot with listings
+	MaxNPCPerPlot = 2,
+	PlotSaleCooldownSeconds = 20, -- at most one NPC purchase per plot in this time
+	DemandDropPerSale = 0.06, -- class demand falls after each NPC purchase...
+	DemandRecoveryPerMinute = 0.05, -- ...and recovers over time
+	DemandMin = 0.6,
 }
 
 -- Showroom capacity levels (cars that can be displayed / later sold to NPCs).
@@ -74,6 +88,12 @@ GameConfig.RateLimits = {
 	ToggleDisplay = { Count = 6, Per = 3 },
 	BuyDisplayUpgrade = { Count = 3, Per = 3 },
 	GetSnapshot = { Count = 6, Per = 5 },
+	ApplyTuning = { Count = 6, Per = 3 },
+	SetListing = { Count = 6, Per = 3 },
+	RespondOffer = { Count = 6, Per = 3 },
+	SpinFree = { Count = 2, Per = 3 },
+	PromptProduct = { Count = 3, Per = 5 },
+	Teleport = { Count = 2, Per = 4 },
 }
 
 -- XP curve: level n requires XPBase * (n-1)^XPExponent total xp

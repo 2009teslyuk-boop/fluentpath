@@ -21,7 +21,8 @@ function Pricing.breakdown(record, marketIndex: number?)
 	end
 	local f = Pricing.Factors
 	local trim = VehicleDatabase.getTrim(model, record.trim)
-	local color = VehicleDatabase.ColorByKey[record.color]
+	-- a repainted car loses the bonus of a rare factory colour
+	local color = if record.mods and record.mods.Paint then nil else VehicleDatabase.ColorByKey[record.color]
 
 	local yearFactor = 1
 	if model.YearMax > model.YearMin then

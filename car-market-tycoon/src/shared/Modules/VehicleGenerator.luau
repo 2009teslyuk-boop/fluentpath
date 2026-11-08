@@ -35,7 +35,7 @@ function VehicleGenerator.generate(rng: Random, rarity: string, forcedModelKey: 
 	local trim = Util.weightedPick(rng, VehicleDatabase.TrimSets[model.Trims], function(t)
 		return t.Weight
 	end)
-	local color = pickColor(rng)
+	local color = (model.FixedColor and VehicleDatabase.ColorByKey[model.FixedColor]) or pickColor(rng)
 	local interior = Util.weightedPick(rng, VehicleDatabase.Interiors, function(i)
 		return i.Weight
 	end)
@@ -104,6 +104,16 @@ function VehicleGenerator.generate(rng: Random, rarity: string, forcedModelKey: 
 		acquiredAt = os.time(),
 		paid = 0,
 	}
+end
+
+-- Limited (Robux) car: always pristine, fixed colour, marked as a limited series.
+function VehicleGenerator.generateLimited(rng: Random, modelKey: string)
+	local record = VehicleGenerator.generate(rng, "Exclusive", modelKey)
+	record.condition, record.damage, record.mileage = 100, 0, 0
+	record.finds = { "Limited" }
+	record.story = nil
+	record.serial = nil
+	return record
 end
 
 function VehicleGenerator.roll(rng: Random, multipliers: { [string]: number }?)

@@ -7,8 +7,12 @@ local ORDER = {
 	"RevealController",
 	"YardController",
 	"InventoryController",
+	"TuningController",
+	"SaleController",
 	"ShowroomController",
 	"MarketController",
+	"ShopController",
+	"HomeController",
 }
 
 for _, name in ORDER do

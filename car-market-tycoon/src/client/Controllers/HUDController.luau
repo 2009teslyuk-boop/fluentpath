@@ -297,7 +297,7 @@ function HUDController.init()
 		Name = "Menu",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -16, 0.5, 0),
-		Size = UDim2.fromOffset(150, 300),
+		Size = UDim2.fromOffset(150, 420),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, { C.list(Enum.FillDirection.Vertical, 10, Enum.HorizontalAlignment.Right) })

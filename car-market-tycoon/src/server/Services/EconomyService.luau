@@ -133,6 +133,12 @@ function EconomyService.buildState(player: Player)
 		incomePerMinute = EconomyService.incomePerMinute(player),
 		stats = data.stats,
 		plotIndex = Services.PlotService.getPlot(player) and (Services.PlotService.getPlot(player) :: any).index or nil,
+		serverTime = os.time(),
+		freeSpinReadyAt = Services.ShopService.freeSpinReadyAt(data),
+		paidSpinAllowed = not Services.ShopService.isPaidRandomRestricted(player),
+		limitedOwned = data.limitedOwned,
+		autoSell = data.settings.autoSell,
+		listingsCount = Util.count(data.listings),
 	}
 end
 

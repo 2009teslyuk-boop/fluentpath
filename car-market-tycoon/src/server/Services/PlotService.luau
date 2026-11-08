@@ -49,8 +49,12 @@ function PlotService.plotCFrame(index: number): CFrame
 	local cfg = GameConfig.Plots
 	local perSide = cfg.Count / 2
 	local side = if index <= perSide then -1 else 1
-	local k = (index - 1) % perSide
-	local z = (k - (perSide - 1) / 2) * cfg.Spacing
+	local k = (index - 1) % perSide -- 0..perSide-1 along the boulevard
+	local half = perSide / 2
+	-- plots leave a gap in the middle of the map for the Mega Market
+	local j = if k < half then (half - 1 - k) else (k - half)
+	local sign = if k < half then -1 else 1
+	local z = sign * (cfg.CenterGap / 2 + cfg.Width / 2 + j * cfg.Spacing)
 	local x = side * (cfg.BoulevardWidth / 2 + cfg.Depth / 2 + 6)
 	return CF(x, 0, z) * CFrame.Angles(0, side * math.pi / 2, 0)
 end
@@ -177,22 +181,27 @@ function PlotService.spawnCFrame(plot: Plot): CFrame
 	return plot.cframe * SPAWN_LOCAL * CFrame.Angles(0, math.pi, 0)
 end
 
-function PlotService.teleportHome(player: Player)
-	local plot = byPlayer[player]
+function PlotService.teleportTo(player: Player, target: CFrame)
 	local character = player.Character
-	if not plot or not character then
+	if not character then
 		return
 	end
 	local root = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
-	if not root or byPlayer[player] ~= plot then
+	if not root then
 		return
 	end
-	local target = PlotService.spawnCFrame(plot)
 	pcall(function()
 		player:RequestStreamAroundAsync(target.Position, 5)
 	end)
 	if character.Parent then
 		character:PivotTo(target)
+	end
+end
+
+function PlotService.teleportHome(player: Player)
+	local plot = byPlayer[player]
+	if plot then
+		PlotService.teleportTo(player, PlotService.spawnCFrame(plot))
 	end
 end
 

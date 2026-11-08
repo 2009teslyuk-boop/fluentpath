@@ -72,6 +72,31 @@ function RemoteService.start()
 	bind("BuyDisplayUpgrade", function(player)
 		return Services.UpgradeService.buyDisplayUpgrade(player)
 	end)
+	bind("ApplyTuning", function(player, id, category, option)
+		return Services.CustomizationService.apply(player, id, category, option)
+	end)
+	bind("SetListing", function(player, id, price, autoSell)
+		return Services.VehicleService.setListing(player, id, price, autoSell)
+	end)
+	bind("RespondOffer", function(player, offerId, accept)
+		return Services.SalesService.respondOffer(player, offerId, accept)
+	end)
+	bind("SpinFree", function(player)
+		return Services.ShopService.spinFree(player)
+	end)
+	bind("PromptProduct", function(player, key)
+		return Services.ShopService.promptProduct(player, key)
+	end)
+	bind("Teleport", function(player, destination)
+		if destination == "home" then
+			task.spawn(Services.PlotService.teleportHome, player)
+		elseif destination == "shop" then
+			task.spawn(Services.PlotService.teleportTo, player, Services.WorldService.ShopSpawnCFrame)
+		else
+			return { ok = false, error = "Невірний запит" }
+		end
+		return { ok = true }
+	end)
 	bind("GetSnapshot", function(player)
 		local data = Services.PlayerDataService.getData(player)
 		local inventory = {}

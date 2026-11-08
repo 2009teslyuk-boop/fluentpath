@@ -26,17 +26,25 @@ end
 -- Picks an element of `list` using `weightOf(element)` as relative weight.
 function Util.weightedPick<T>(rng: Random, list: { T }, weightOf: (T) -> number): T
 	local total = 0
+	local last = list[#list]
 	for _, item in list do
-		total += math.max(0, weightOf(item))
+		local w = weightOf(item)
+		if w > 0 then
+			total += w
+			last = item
+		end
 	end
 	local roll = rng:NextNumber() * total
 	for _, item in list do
-		roll -= math.max(0, weightOf(item))
-		if roll <= 0 then
-			return item
+		local w = weightOf(item)
+		if w > 0 then
+			roll -= w
+			if roll <= 0 then
+				return item
+			end
 		end
 	end
-	return list[#list]
+	return last
 end
 
 function Util.count(dict: { [any]: any }): number

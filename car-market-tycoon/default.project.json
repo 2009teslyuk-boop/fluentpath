@@ -13,6 +13,9 @@
       }
     },
     "StarterPlayer": {
+      "$properties": {
+        "CharacterWalkSpeed": 24
+      },
       "StarterPlayerScripts": {
         "Client": {
           "$path": "src/client"

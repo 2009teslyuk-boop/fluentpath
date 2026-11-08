@@ -23,8 +23,9 @@ local function refresh()
 	end
 	for class, label in rows do
 		local index = folder:GetAttribute(class) or 1
+		local demandValue = folder:GetAttribute("Demand_" .. class) or 1
 		local pct = (index - 1) * 100
-		label.Text = ("%s%.1f%%"):format(if pct >= 0 then "+" else "", pct)
+		label.Text = ("%s%.1f%%  ·  попит %d%%"):format(if pct >= 0 then "+" else "", pct, math.floor(demandValue * 100 + 0.5))
 		label.TextColor3 = if pct > 0.05 then Theme.Money elseif pct < -0.05 then Theme.Danger else Theme.Muted
 	end
 end
@@ -33,7 +34,7 @@ function MarketController.init()
 	modal = C.modal("MarketUI", "РИНОК", Vector2.new(560, 560), 11)
 	local content = modal.content
 	C.label({
-		Text = "Ціни на класи авто змінюються кожні кілька хвилин. Продавайте, коли ваш клас у плюсі.",
+		Text = "Ціни класів змінюються кожні кілька хвилин. Попит NPC-покупців падає після кожного продажу й відновлюється з часом.",
 		TextColor3 = Theme.Muted,
 		TextSize = 14,
 		Position = UDim2.fromOffset(24, 14),
@@ -51,15 +52,15 @@ function MarketController.init()
 	for i, class in VehicleDatabase.ClassOrder do
 		local cell = create("Frame", { LayoutOrder = i, BackgroundColor3 = Theme.Panel2, Parent = list }, {
 			C.corner(Theme.CornerSmall),
-			C.label({ Text = VehicleDatabase.Classes[class].NameUA, Font = Theme.FontBold, TextSize = 15, Position = UDim2.fromOffset(12, 0), Size = UDim2.new(0.62, 0, 1, 0) }),
+			C.label({ Text = VehicleDatabase.Classes[class].NameUA, Font = Theme.FontBold, TextSize = 14, Position = UDim2.fromOffset(12, 0), Size = UDim2.new(0.45, 0, 1, 0) }),
 		})
 		rows[class] = C.label({
 			Text = "+0.0%",
 			Font = Theme.FontBlack,
-			TextSize = 17,
 			TextXAlignment = Enum.TextXAlignment.Right,
-			Position = UDim2.new(0.6, 0, 0, 0),
-			Size = UDim2.new(0.4, -12, 1, 0),
+			TextSize = 14,
+			Position = UDim2.new(0.42, 0, 0, 0),
+			Size = UDim2.new(0.58, -12, 1, 0),
 			Parent = cell,
 		})
 	end

@@ -4,8 +4,11 @@ local RunService = game:GetService("RunService")
 
 local Net = {}
 
-Net.Functions = { "BuyLot", "SellVehicle", "ToggleDisplay", "BuyDisplayUpgrade", "GetSnapshot" }
-Net.Events = { "StateChanged", "InventoryChanged", "LotRevealed", "Announce", "Notify" }
+Net.Functions = {
+	"BuyLot", "SellVehicle", "ToggleDisplay", "BuyDisplayUpgrade", "GetSnapshot",
+	"ApplyTuning", "SetListing", "RespondOffer", "SpinFree", "PromptProduct", "Teleport",
+}
+Net.Events = { "StateChanged", "InventoryChanged", "LotRevealed", "Announce", "Notify", "OfferReceived", "SpinResult" }
 
 local FOLDER_NAME = "Remotes"
 

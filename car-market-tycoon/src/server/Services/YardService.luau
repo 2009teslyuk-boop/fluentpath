@@ -70,7 +70,7 @@ end
 
 local function silhouetteHint(dims): string
 	local low = dims.H < 3.6
-	local long = dims.L >= 15.5
+	local long = dims.L >= 14
 	local tall = dims.H >= 4.8
 	if tall and long then
 		return "Високий і довгий силует"

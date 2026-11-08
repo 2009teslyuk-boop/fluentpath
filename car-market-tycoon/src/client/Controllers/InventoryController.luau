@@ -29,6 +29,7 @@ local viewport: ViewportFrame
 local viewportCamera: Camera
 local displayButton: TextButton
 local sellButton: TextButton
+local saleButton: TextButton
 local emptyLabel: TextLabel
 
 local sortMode = "value"
@@ -125,7 +126,17 @@ local function showDetail(vehicle)
 		Parent = detailBody,
 	})
 	displayButton.Text = if vehicle.displayed then "ПРИБРАТИ З ШОУРУМУ" else "ВИСТАВИТИ В ШОУРУМ"
-	sellButton.Text = "ПРОДАТИ ЗА " .. Format.moneyShort(vehicle.quickSell)
+	if vehicle.tradeable == false then
+		sellButton.Text = "НЕ ПРОДАЄТЬСЯ"
+		saleButton.Text = "ЛІМІТОВАНЕ АВТО"
+		C.setEnabled(sellButton, false)
+		C.setEnabled(saleButton, false)
+	else
+		sellButton.Text = "РИНКУ ЗА " .. Format.moneyShort(vehicle.quickSell)
+		saleButton.Text = if vehicle.listedPrice then "У ПРОДАЖУ · " .. Format.moneyShort(vehicle.listedPrice) else "ПРОДАТИ ПОКУПЦЯМ"
+		C.setEnabled(sellButton, true)
+		C.setEnabled(saleButton, true)
+	end
 	setPreview(vehicle)
 end
 
@@ -149,7 +160,7 @@ local function card(vehicle, order: number)
 		C.label({ Text = Format.moneyShort(vehicle.value), Font = Theme.FontBlack, TextColor3 = Theme.Money, TextSize = 16, Position = UDim2.new(0, 10, 1, -26), Size = UDim2.new(1, -20, 0, 20) }),
 	})
 	if vehicle.displayed then
-		C.label({ Text = "У ШОУРУМІ", TextColor3 = Theme.Accent, Font = Theme.FontBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right, Position = UDim2.new(0, 10, 1, -24), Size = UDim2.new(1, -20, 0, 16), Parent = button })
+		C.label({ Text = if vehicle.listedPrice then "ПРОДАЄТЬСЯ" else "У ШОУРУМІ", TextColor3 = Theme.Accent, Font = Theme.FontBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right, Position = UDim2.new(0, 10, 1, -24), Size = UDim2.new(1, -20, 0, 16), Parent = button })
 	end
 	if vehicle.finds and #vehicle.finds > 0 then
 		C.label({ Text = "★", TextColor3 = Theme.Gold, Font = Theme.FontBlack, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Right, Position = UDim2.fromOffset(10, 7), Size = UDim2.new(1, -20, 0, 18), Parent = button })
@@ -272,7 +283,7 @@ local function build()
 
 	detailBody = create("ScrollingFrame", {
 		Position = UDim2.fromOffset(14, 178),
-		Size = UDim2.new(1, -22, 1, -248),
+		Size = UDim2.new(1, -22, 1, -298),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollBarThickness = 4,
@@ -285,18 +296,31 @@ local function build()
 	local actions = create("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 12, 1, -12),
-		Size = UDim2.new(1, -24, 0, 48),
+		Size = UDim2.new(1, -24, 0, 98),
 		BackgroundTransparency = 1,
 		Parent = detail,
-	}, { C.list(Enum.FillDirection.Horizontal, 8) })
-	displayButton = C.button({ Text = "ВИСТАВИТИ", LayoutOrder = 1, Size = UDim2.new(0.55, -4, 1, 0), TextSize = 14, Parent = actions }, "primary", function()
+	}, {
+		create("UIGridLayout", { CellSize = UDim2.new(0.5, -4, 0, 45), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	displayButton = C.button({ Text = "ВИСТАВИТИ", LayoutOrder = 1, TextSize = 13, Parent = actions }, "primary", function()
 		act("ToggleDisplay", function(result)
 			return if result.displayed then "Авто виставлено в шоурум" else "Авто прибрано з шоуруму"
 		end)
 	end)
-	sellButton = C.button({ Text = "ПРОДАТИ", LayoutOrder = 2, Size = UDim2.new(0.45, -4, 1, 0), TextSize = 14, Parent = actions }, "money", function()
+	C.button({ Text = "ТЮНІНГ", LayoutOrder = 2, TextSize = 13, Parent = actions }, "gold", function()
+		if selectedId then
+			modal.close()
+			require(script.Parent.TuningController).open(selectedId)
+		end
+	end)
+	saleButton = C.button({ Text = "ПРОДАТИ ПОКУПЦЯМ", LayoutOrder = 3, TextSize = 13, Parent = actions }, "secondary", function()
+		if selectedId then
+			require(script.Parent.SaleController).open(selectedId)
+		end
+	end)
+	sellButton = C.button({ Text = "ПРОДАТИ", LayoutOrder = 4, TextSize = 13, Parent = actions }, "money", function()
 		act("SellVehicle", function(result)
-			return "Продано за " .. Format.money(result.payout)
+			return "Продано ринку за " .. Format.money(result.payout)
 		end)
 	end)
 

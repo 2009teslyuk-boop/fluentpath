@@ -38,6 +38,12 @@ local TEMPLATE = {
 		rarityCounts = {},
 	},
 	salesHistory = {}, -- newest first
+	listings = {}, -- [vehicleId] = price (showroom cars for sale to NPC buyers)
+	settings = { autoSell = true },
+	lastFreeSpin = 0,
+	spins = 0,
+	limitedOwned = {}, -- [productKey] = os.time() of the purchase (each limited car once)
+	receipts = {}, -- [PurchaseId] = os.time(), for idempotent ProcessReceipt
 	createdAt = 0,
 	lastLogin = 0,
 }
@@ -75,6 +81,11 @@ local function migrate(data)
 		end
 	end
 	data.displayed = cleaned
+	for id in data.listings do
+		if not table.find(cleaned, id) then
+			data.listings[id] = nil
+		end
+	end
 	return data
 end
 
@@ -229,6 +240,15 @@ local function onPlayerRemoving(player: Player)
 	end
 	releaseProfile(player, profile)
 	profiles[player] = nil
+end
+
+-- Immediate save (used after Robux purchases before confirming the receipt).
+function PlayerDataService.saveNow(player: Player): boolean
+	local profile = profiles[player]
+	if not profile then
+		return false
+	end
+	return saveProfile(profile, false)
 end
 
 function PlayerDataService.getProfile(player: Player): Profile?
