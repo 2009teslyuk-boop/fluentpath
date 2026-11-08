@@ -123,7 +123,17 @@ local function buildTopLeft()
 		else
 			TweenService:Create(shown, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = state.cash }):Play()
 		end
-		income.Text = ("+%s / хв"):format(Format.money(state.incomePerMinute))
+		local extra = ""
+		if state.incomeMultiplier and state.incomeMultiplier > 1.001 then
+			extra ..= ("  ·  x%.2g"):format(state.incomeMultiplier)
+		end
+		if state.cashBoostLeft and state.cashBoostLeft > 0 then
+			extra ..= ("  ·  буст %d хв"):format(math.ceil(state.cashBoostLeft / 60))
+		end
+		if state.luckBoostLeft and state.luckBoostLeft > 0 then
+			extra ..= ("  ·  удача %d хв"):format(math.ceil(state.luckBoostLeft / 60))
+		end
+		income.Text = ("+%s / хв%s"):format(Format.money(state.incomePerMinute), extra)
 		levelText.Text = ("РІВЕНЬ %d"):format(state.level)
 		garageText.Text = ("Гараж %d/%d"):format(state.garageCount, state.garageSlots)
 		local span = math.max(1, state.xpNextLevel - state.xpLevelStart)

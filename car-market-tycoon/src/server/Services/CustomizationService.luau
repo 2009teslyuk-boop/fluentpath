@@ -38,6 +38,9 @@ function CustomizationService.apply(player: Player, vehicleId: any, category: an
 		if installed and installed.key == option.Key then
 			return { ok = false, error = "Ця деталь уже встановлена" }
 		end
+		if option.RequiresPass and not Services.ShopService.hasPass(player, option.RequiresPass) then
+			return { ok = false, error = "Потрібен пропуск «Преміум-тюнінг» (Мега-маркет → Переваги)" }
+		end
 		if (data.level or 1) < (option.Level or 1) then
 			return { ok = false, error = ("Потрібен рівень %d"):format(option.Level) }
 		end

@@ -106,7 +106,7 @@ function EconomyService.incomePerMinute(player: Player): number
 	if Services.VehicleService then
 		income += Services.VehicleService.displayIncomePerMinute(player)
 	end
-	return math.floor(income)
+	return math.floor(income * Services.ShopService.incomeMultiplier(player))
 end
 
 function EconomyService.buildState(player: Player)
@@ -134,7 +134,11 @@ function EconomyService.buildState(player: Player)
 		stats = data.stats,
 		plotIndex = Services.PlotService.getPlot(player) and (Services.PlotService.getPlot(player) :: any).index or nil,
 		serverTime = os.time(),
-		freeSpinReadyAt = Services.ShopService.freeSpinReadyAt(data),
+		freeSpinReadyAt = Services.ShopService.freeSpinReadyAt(data, player),
+		passes = Services.ShopService.ownedPasses(player),
+		cashBoostLeft = Services.ShopService.boostLeft(player, "cash"),
+		luckBoostLeft = Services.ShopService.boostLeft(player, "luck"),
+		incomeMultiplier = Services.ShopService.incomeMultiplier(player),
 		paidSpinAllowed = not Services.ShopService.isPaidRandomRestricted(player),
 		limitedOwned = data.limitedOwned,
 		autoSell = data.settings.autoSell,

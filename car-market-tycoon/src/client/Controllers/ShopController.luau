@@ -37,6 +37,7 @@ local freeButton: TextButton
 local paidButton: TextButton
 local limitedCards = {} :: { [string]: { button: TextButton, status: TextLabel } }
 local spinning = false
+local refreshProducts: () -> () -- defined below, used by refreshButtons
 
 local TILE_W, TILE_GAP = 132, 8
 local STRIP_TILES = 46
@@ -143,11 +144,51 @@ local function refreshButtons()
 		paidButton.Text = ("КРУТИТИ ЗА R$ %d"):format(product.PriceRobux)
 		C.setEnabled(paidButton, not spinning)
 	end
+	refreshProducts()
 	for key, card in limitedCards do
 		local owned = state.limitedOwned and state.limitedOwned[key]
 		card.button.Text = if owned then "ВЖЕ ВАШЕ" else ("КУПИТИ · R$ %d"):format(MonetizationConfig.Products[key].PriceRobux)
 		C.setEnabled(card.button, not owned)
 		card.status.Text = if owned then "У вашому гаражі" else "Одна покупка на гравця · у колесі шанс 0.00001%"
+	end
+end
+
+local productButtons = {} :: { [string]: { button: TextButton, sub: TextLabel?, baseSub: string } }
+
+local function formatLeft(seconds: number): string
+	if seconds >= 3600 then
+		return ("%d год %02d хв"):format(seconds // 3600, (seconds % 3600) // 60)
+	end
+	return ("%d:%02d"):format(seconds // 60, seconds % 60)
+end
+
+function refreshProducts()
+	local state = StateController.state
+	if not state then
+		return
+	end
+	local passes = state.passes or {}
+	for key, refs in productButtons do
+		local pass = MonetizationConfig.GamePasses[key]
+		local product = MonetizationConfig.Products[key]
+		local enabled, text = true, ("R$ %d"):format(if pass then pass.PriceRobux else product.PriceRobux)
+		if pass and passes[key] then
+			enabled, text = false, "ВЖЕ ВАШЕ"
+		elseif (key == "ShowroomLevel" and not state.nextDisplayCapacity) or (key == "GarageSlots" and product and state.garageSlots >= product.Cap) then
+			enabled, text = false, "МАКСИМУМ"
+		end
+		refs.button.Text = text
+		C.setEnabled(refs.button, enabled)
+		if refs.sub and product and product.Kind == "boost" then
+			local left = if product.Boost == "cash" then state.cashBoostLeft else state.luckBoostLeft
+			local elapsed = os.time() - (ShopController.stateReceivedAt or os.time())
+			left = math.max(0, (left or 0) - elapsed)
+			refs.sub.Text = if left > 0 then refs.baseSub .. " · активно ще " .. formatLeft(left) else refs.baseSub
+		elseif refs.sub and key == "ShowroomLevel" then
+			refs.sub.Text = if state.nextDisplayCapacity then ("Зараз %d → %d місць"):format(state.displayCapacity, state.nextDisplayCapacity) else "Шоурум максимальний"
+		elseif refs.sub and key == "GarageSlots" then
+			refs.sub.Text = ("Зараз %d місць (максимум %d)"):format(state.garageSlots, product.Cap)
+		end
 	end
 end
 
@@ -332,20 +373,98 @@ local function buildLimitedPage(page: Frame)
 	end
 end
 
+local function productCard(parent: Instance, order: number, key: string, title: string, big: string?, sub: string, accent: Color3, badge: string?)
+	local card = create("Frame", { LayoutOrder = order, BackgroundColor3 = Theme.Panel2, Parent = parent }, {
+		C.corner(Theme.CornerSmall),
+		C.stroke(accent, 1.5, 0.2),
+		create("Frame", { Size = UDim2.new(1, 0, 0, 5), BackgroundColor3 = accent, BorderSizePixel = 0 }),
+	})
+	C.label({ Text = title, Font = Theme.FontBlack, TextSize = 16, Position = UDim2.fromOffset(12, 12), Size = UDim2.new(1, -24, 0, 20), TextTruncate = Enum.TextTruncate.AtEnd, TextWrapped = false, Parent = card })
+	local y = 34
+	if big then
+		C.label({ Text = big, Font = Theme.FontBlack, TextSize = 26, TextColor3 = Theme.Money, Position = UDim2.fromOffset(12, y), Size = UDim2.new(1, -24, 0, 30), Parent = card })
+		y += 32
+	end
+	local subLabel = C.label({ Text = sub, TextSize = 12, TextColor3 = Theme.Muted, Position = UDim2.fromOffset(12, y), Size = UDim2.new(1, -24, 1, -(y + 56)), TextYAlignment = Enum.TextYAlignment.Top, Parent = card })
+	if badge then
+		create("TextLabel", {
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -10, 0, 10),
+			Size = UDim2.fromOffset(74, 22),
+			BackgroundColor3 = Color3.fromRGB(60, 46, 12),
+			Font = Theme.FontBlack,
+			TextSize = 12,
+			TextColor3 = Theme.Gold,
+			Text = badge,
+			Parent = card,
+		}, { C.corner(UDim.new(1, 0)) })
+	end
+	local button = C.button({ AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 10, 1, -10), Size = UDim2.new(1, -20, 0, 40), Text = "", TextSize = 15, Parent = card }, "gold", function()
+		prompt(key)
+	end)
+	productButtons[key] = { button = button, sub = subLabel, baseSub = sub }
+	return card
+end
+
+local function buildCashPage(page: Frame)
+	C.label({
+		Text = "Ігрова валюта за Robux. Курс ~$1 000 за 1 R$, великі пакети з бонусом до +60%. Гроші нараховуються одразу й зберігаються.",
+		TextSize = 13,
+		TextColor3 = Theme.Muted,
+		Position = UDim2.fromOffset(18, 4),
+		Size = UDim2.new(1, -36, 0, 34),
+		Parent = page,
+	})
+	local grid = create("Frame", { Position = UDim2.fromOffset(18, 42), Size = UDim2.new(1, -36, 1, -56), BackgroundTransparency = 1, Parent = page }, {
+		create("UIGridLayout", { CellSize = UDim2.new(1 / 3, -8, 0.5, -6), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	for i, key in MonetizationConfig.CashPacks do
+		local product = MonetizationConfig.Products[key]
+		local perRobux = math.floor(product.Amount / product.PriceRobux)
+		productCard(grid, i, key, product.NameUA, Format.money(product.Amount), ("≈ %s за 1 R$"):format(Format.money(perRobux)), Theme.Money, if product.Bonus then ("+%d%%"):format(product.Bonus) else nil)
+	end
+end
+
+local function buildPerksPage(page: Frame)
+	local passes = create("Frame", { Position = UDim2.fromOffset(18, 4), Size = UDim2.new(1, -36, 0, 268), BackgroundTransparency = 1, Parent = page }, {
+		create("UIGridLayout", { CellSize = UDim2.new(1 / 3, -8, 0, 128), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	for i, key in MonetizationConfig.PassOrder do
+		local pass = MonetizationConfig.GamePasses[key]
+		productCard(passes, i, key, pass.NameUA, nil, pass.Description, Theme.Gold, "НАЗАВЖДИ")
+	end
+	local extras = create("Frame", { Position = UDim2.fromOffset(18, 284), Size = UDim2.new(1, -36, 0, 150), BackgroundTransparency = 1, Parent = page }, {
+		create("UIGridLayout", { CellSize = UDim2.new(1 / #MonetizationConfig.ExtraProducts, -10, 1, 0), CellPadding = UDim2.fromOffset(12, 0), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	local subs = {
+		GarageSlots = "Більше машин у гаражі",
+		ShowroomLevel = "Наступний рівень шоуруму без грошей",
+		Boost_Cash30 = "Подвоює пасивний дохід",
+		Boost_Cash120 = "Подвоює пасивний дохід",
+		Boost_Luck30 = "Під брезентами частіше Epic+",
+	}
+	for i, key in MonetizationConfig.ExtraProducts do
+		local product = MonetizationConfig.Products[key]
+		productCard(extras, i, key, product.NameUA, nil, subs[key] or "", Theme.Accent, nil)
+	end
+end
+
 local function build()
 	modal = C.modal("ShopUI", "МЕГА-МАРКЕТ", Vector2.new(1040, 560), 12)
 	local content = modal.content
 	local tabBar = create("Frame", { Position = UDim2.fromOffset(18, 10), Size = UDim2.new(1, -36, 0, 40), BackgroundTransparency = 1, Parent = content }, {
 		C.list(Enum.FillDirection.Horizontal, 8),
 	})
-	for i, tab in { { "wheel", "КОЛЕСО ФОРТУНИ" }, { "limited", "ЛІМІТОВАНІ АВТО" } } do
-		tabButtons[tab[1]] = C.button({ Text = tab[2], LayoutOrder = i, Size = UDim2.fromOffset(220, 40), TextSize = 15, Parent = tabBar }, "secondary", function()
+	for i, tab in { { "wheel", "КОЛЕСО ФОРТУНИ" }, { "limited", "ЛІМІТОВАНІ АВТО" }, { "cash", "ГРОШІ" }, { "perks", "ПЕРЕВАГИ" } } do
+		tabButtons[tab[1]] = C.button({ Text = tab[2], LayoutOrder = i, Size = UDim2.fromOffset(210, 40), TextSize = 15, Parent = tabBar }, "secondary", function()
 			showTab(tab[1])
 		end)
 		pages[tab[1]] = create("Frame", { Position = UDim2.fromOffset(0, 58), Size = UDim2.new(1, 0, 1, -58), BackgroundTransparency = 1, Visible = false, Parent = content })
 	end
 	buildWheelPage(pages.wheel)
 	buildLimitedPage(pages.limited)
+	buildCashPage(pages.cash)
+	buildPerksPage(pages.perks)
 	showTab("wheel")
 end
 
@@ -358,9 +477,12 @@ end
 local function spinDecorWheels()
 	-- every client spins the decorative wheels itself (no network traffic)
 	local wheels = {}
+	local rainbows = {} :: { BasePart }
 	local function track(inst: Instance)
 		if inst:IsA("Model") and inst:GetAttribute("SpinDecor") then
 			table.insert(wheels, { model = inst, base = nil })
+		elseif inst:IsA("BasePart") and inst:GetAttribute("Rainbow") then
+			table.insert(rainbows, inst)
 		end
 	end
 	for _, d in workspace:GetDescendants() do
@@ -370,6 +492,20 @@ local function spinDecorWheels()
 	local angle = 0
 	RunService.Heartbeat:Connect(function(dt)
 		angle += dt * 0.6
+		local hue = (os.clock() * 0.25) % 1
+		for i = #rainbows, 1, -1 do
+			local part = rainbows[i]
+			if not part.Parent then
+				table.remove(rainbows, i)
+			else
+				local color = Color3.fromHSV(hue, 0.9, 1)
+				part.Color = color
+				local light = part:FindFirstChildOfClass("PointLight")
+				if light then
+					light.Color = color
+				end
+			end
+		end
 		for i = #wheels, 1, -1 do
 			local w = wheels[i]
 			if not w.model.Parent then

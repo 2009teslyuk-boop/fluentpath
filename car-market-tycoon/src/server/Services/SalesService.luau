@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared.Configs.GameConfig)
 local NPCConfig = require(Shared.Configs.NPCConfig)
+local MonetizationConfig = require(Shared.Configs.MonetizationConfig)
 local RarityConfig = require(Shared.Configs.RarityConfig)
 local VehicleDatabase = require(Shared.Modules.VehicleDatabase)
 local Format = require(Shared.Modules.Format)
@@ -182,7 +183,11 @@ local function executeSale(player: Player, id: string, price: number, npcType): 
 	end
 	local vehicleModel = VehicleDatabase.getModel(record.modelKey)
 	local class = vehicleModel and vehicleModel.Class or "Sedan"
-	demand[class] = math.max(cfg.DemandMin, (demand[class] or 1) - cfg.DemandDropPerSale)
+	local drop = cfg.DemandDropPerSale
+	if Services.ShopService.hasPass(player, "Dealer") then
+		drop *= MonetizationConfig.Effects.DealerDemandDropFactor
+	end
+	demand[class] = math.max(cfg.DemandMin, (demand[class] or 1) - drop)
 	publishDemand(class)
 	Services.EconomyService.addXP(player, 25 + RarityConfig.index(record.rarity) * 10)
 	Services.EconomyService.notify(player, ("%s купив %s за %s"):format(npcType.NameUA, VehicleDatabase.displayName(record), Format.money(price)), "success")
@@ -383,8 +388,11 @@ function SalesService.start()
 			local now = os.clock()
 			for player, st in plotSales do
 				local data = Services.PlayerDataService.getData(player)
-				if data and next(data.listings) ~= nil and st.npcs < cfg.MaxNPCPerPlot and now >= st.nextSpawn then
-					st.nextSpawn = now + rng:NextNumber(cfg.SpawnIntervalSeconds[1], cfg.SpawnIntervalSeconds[2])
+				local dealer = Services.ShopService.hasPass(player, "Dealer")
+				local maxNpc = if dealer then MonetizationConfig.Effects.DealerMaxNPC else cfg.MaxNPCPerPlot
+				if data and next(data.listings) ~= nil and st.npcs < maxNpc and now >= st.nextSpawn then
+					local factor = if dealer then MonetizationConfig.Effects.DealerSpawnFactor else 1
+					st.nextSpawn = now + rng:NextNumber(cfg.SpawnIntervalSeconds[1], cfg.SpawnIntervalSeconds[2]) * factor
 					task.spawn(visit, player)
 				end
 			end

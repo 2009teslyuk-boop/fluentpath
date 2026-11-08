@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared.Configs.GameConfig)
 local RarityConfig = require(Shared.Configs.RarityConfig)
 local TarpConfig = require(Shared.Configs.TarpConfig)
+local MonetizationConfig = require(Shared.Configs.MonetizationConfig)
 local VehicleDatabase = require(Shared.Modules.VehicleDatabase)
 local VehicleBuilder = require(Shared.Modules.VehicleBuilder)
 local VehicleGenerator = require(Shared.Modules.VehicleGenerator)
@@ -232,7 +233,16 @@ local function restock(player: Player, lot: Lot)
 	-- small random spread so neighbouring lots of the same tier do not all look identical
 	local jitter = 0.94 + rng:NextNumber() * 0.12
 	lot.price = Util.roundTo(tierPrices[tier] * jitter, GameConfig.Yard.PriceRounding)
-	lot.record = VehicleGenerator.roll(rng, TarpConfig.get(tier).RarityMultipliers)
+	local multipliers = TarpConfig.get(tier).RarityMultipliers
+	local luck = Services.ShopService.luckMultiplier(player)
+	if luck ~= 1 then
+		-- "Щасливий брезент" pass / luck boost: Epic and above more often
+		multipliers = table.clone(multipliers)
+		for _, key in { "Epic", "Legendary", "Mythic", "Exclusive" } do
+			multipliers[key] = (multipliers[key] or 1) * luck
+		end
+	end
+	lot.record = VehicleGenerator.roll(rng, multipliers)
 	lot.vehicleId = nil
 	lot.state = "available"
 	lot.tarp = buildTarp(lot, player, lot.record, cf)
@@ -372,7 +382,8 @@ function YardService.buyLot(player: Player, lotIndex: any)
 		end
 		YardService.onVehicleLeft(player, record.id)
 		lot.state = "empty"
-		task.wait(yardCfg.RestockSeconds)
+		local restockFactor = if Services.ShopService.hasPass(player, "FastYard") then MonetizationConfig.Effects.FastYardRestockFactor else 1
+		task.wait(yardCfg.RestockSeconds * restockFactor)
 		if lot.version == version and yards[player] then
 			restock(player, lot)
 		end

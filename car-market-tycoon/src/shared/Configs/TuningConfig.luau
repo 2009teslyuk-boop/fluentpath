@@ -34,16 +34,29 @@ local paintCost = {
 
 local paints = { STOCK }
 for _, color in VehicleDatabase.Colors do
-	local c = paintCost[color.Finish] or paintCost.gloss
-	table.insert(paints, {
-		Key = color.Key,
-		NameUA = color.NameUA,
-		CostFrac = c[1],
-		MinCost = c[2],
-		Level = c[3],
-		Tier = c[4],
-		Swatch = color.Color,
-	})
+	if color.Premium then
+		table.insert(paints, {
+			Key = color.Key,
+			NameUA = color.NameUA,
+			CostFrac = 0.01,
+			MinCost = 1000,
+			Level = 1,
+			Tier = "Преміум",
+			RequiresPass = "PremiumTuning",
+			Swatch = color.Color,
+		})
+	else
+		local c = paintCost[color.Finish] or paintCost.gloss
+		table.insert(paints, {
+			Key = color.Key,
+			NameUA = color.NameUA,
+			CostFrac = c[1],
+			MinCost = c[2],
+			Level = c[3],
+			Tier = c[4],
+			Swatch = color.Color,
+		})
+	end
 end
 
 TuningConfig.Options = {
@@ -56,6 +69,7 @@ TuningConfig.Options = {
 		{ Key = "twin10", NameUA = "Twin 10", CostFrac = 0.04, MinCost = 4000, Level = 5, Tier = "Рідкісні" },
 		{ Key = "turbine", NameUA = "Turbine Aero", CostFrac = 0.06, MinCost = 8000, Level = 9, Tier = "Рідкісні" },
 		{ Key = "steel", NameUA = "Сталеві", CostFrac = 0.005, MinCost = 300, Level = 1, Tier = "Звичайні" },
+		{ Key = "forged", NameUA = "Forged 20 (кований)", CostFrac = 0.01, MinCost = 1000, Level = 1, Tier = "Преміум", RequiresPass = "PremiumTuning" },
 	},
 	RimColor = {
 		STOCK,
@@ -66,6 +80,8 @@ TuningConfig.Options = {
 		{ Key = "Red", NameUA = "Червоний", CostFrac = 0.012, MinCost = 1200, Level = 3 },
 		{ Key = "Bronze", NameUA = "Бронза", CostFrac = 0.015, MinCost = 2000, Level = 5 },
 		{ Key = "Gold", NameUA = "Золото", CostFrac = 0.03, MinCost = 6000, Level = 10, Tier = "Рідкісні" },
+		{ Key = "RoseGold", NameUA = "Рожеве золото", CostFrac = 0.005, MinCost = 500, Level = 1, Tier = "Преміум", RequiresPass = "PremiumTuning" },
+		{ Key = "Chrome", NameUA = "Дзеркальний хром", CostFrac = 0.005, MinCost = 500, Level = 1, Tier = "Преміум", RequiresPass = "PremiumTuning" },
 	},
 	Spoiler = {
 		STOCK,
@@ -74,6 +90,7 @@ TuningConfig.Options = {
 		{ Key = "duck", NameUA = "Дактейл", CostFrac = 0.015, MinCost = 1800, Level = 3 },
 		{ Key = "wing", NameUA = "Антикрило", CostFrac = 0.03, MinCost = 3500, Level = 5 },
 		{ Key = "bigwing", NameUA = "Трекове крило", CostFrac = 0.05, MinCost = 9000, Level = 12, Tier = "Рідкісні" },
+		{ Key = "bigwing_premium", NameUA = "Трекове крило (без рівня)", CostFrac = 0.005, MinCost = 500, Level = 1, Tier = "Преміум", RequiresPass = "PremiumTuning" },
 	},
 	Underglow = {
 		STOCK,
@@ -83,15 +100,18 @@ TuningConfig.Options = {
 		{ Key = "red", NameUA = "Червона", CostFrac = 0.01, MinCost = 2000, Level = 2, Data = { color = { 255, 40, 40 } } },
 		{ Key = "purple", NameUA = "Фіолетова", CostFrac = 0.012, MinCost = 2500, Level = 4, Data = { color = { 150, 70, 255 } } },
 		{ Key = "gold", NameUA = "Золота", CostFrac = 0.02, MinCost = 6000, Level = 10, Tier = "Рідкісна", Data = { color = { 255, 190, 40 } } },
+		{ Key = "rainbow", NameUA = "Веселка (анімована)", CostFrac = 0.005, MinCost = 500, Level = 1, Tier = "Преміум", RequiresPass = "PremiumTuning", Data = { color = { 255, 0, 120 }, rainbow = true } },
 	},
 	Tint = {
 		STOCK,
 		{ Key = "tint", NameUA = "Тонування 70%", CostFrac = 0.006, MinCost = 600, Level = 1 },
+		{ Key = "tint_mirror", NameUA = "Дзеркальне тонування", CostFrac = 0.004, MinCost = 400, Level = 1, Tier = "Преміум", RequiresPass = "PremiumTuning", Data = { mirror = true } },
 	},
 	Suspension = {
 		STOCK,
 		{ Key = "sport", NameUA = "Спортивна (-3 см)", CostFrac = 0.02, MinCost = 2000, Level = 2, Data = { drop = 0.03 } },
 		{ Key = "slammed", NameUA = "Пневма (-5 см)", CostFrac = 0.04, MinCost = 5000, Level = 8, Tier = "Рідкісна", Data = { drop = 0.05 } },
+		{ Key = "stance", NameUA = "Стенс (-7 см)", CostFrac = 0.005, MinCost = 500, Level = 1, Tier = "Преміум", RequiresPass = "PremiumTuning", Data = { drop = 0.07 } },
 	},
 	Engine = {
 		STOCK,

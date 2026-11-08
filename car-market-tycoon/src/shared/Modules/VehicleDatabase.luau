@@ -100,6 +100,13 @@ VehicleDatabase.Colors = {
 	{ Key = "SunsetPearl", NameUA = "Перламутровий захід", Color = Color3.fromRGB(255, 120, 60), Finish = "pearl", Weight = 0, ValueMult = 1.0 },
 	{ Key = "RoyalBlue", NameUA = "Королівський синій", Color = Color3.fromRGB(20, 60, 200), Finish = "metallic", Weight = 0, ValueMult = 1.0 },
 	{ Key = "HotPink", NameUA = "Гарячий рожевий", Color = Color3.fromRGB(255, 60, 160), Finish = "pearl", Weight = 0, ValueMult = 1.0 },
+	-- premium tuning paints (Game Pass "Преміум-тюнінг")
+	{ Key = "GalaxyPurple", NameUA = "Галактика", Color = Color3.fromRGB(70, 30, 150), Finish = "pearl", Weight = 0, ValueMult = 1.0, Premium = true },
+	{ Key = "RoseGold", NameUA = "Рожеве золото", Color = Color3.fromRGB(232, 168, 150), Finish = "chrome", Weight = 0, ValueMult = 1.0, Premium = true },
+	{ Key = "ChromeBlue", NameUA = "Синій хром", Color = Color3.fromRGB(80, 140, 230), Finish = "chrome", Weight = 0, ValueMult = 1.0, Premium = true },
+	{ Key = "CarbonBlack", NameUA = "Карбон", Color = Color3.fromRGB(30, 30, 34), Finish = "carbon", Weight = 0, ValueMult = 1.0, Premium = true },
+	{ Key = "NeonLime", NameUA = "Неоновий лайм", Color = Color3.fromRGB(170, 255, 40), Finish = "neon", Weight = 0, ValueMult = 1.0, Premium = true },
+	{ Key = "NeonCyan", NameUA = "Неоновий ціан", Color = Color3.fromRGB(40, 230, 255), Finish = "neon", Weight = 0, ValueMult = 1.0, Premium = true },
 }
 
 VehicleDatabase.Interiors = {

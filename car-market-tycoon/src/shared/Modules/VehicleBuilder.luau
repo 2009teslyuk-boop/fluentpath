@@ -53,6 +53,8 @@ VehicleBuilder.RimColors = {
 	Bronze = Color3.fromRGB(150, 104, 60),
 	Red = Color3.fromRGB(200, 30, 36),
 	White = Color3.fromRGB(236, 236, 236),
+	RoseGold = Color3.fromRGB(232, 168, 150),
+	Chrome = Color3.fromRGB(225, 230, 238),
 }
 
 -- Rim styles: number of spokes and spoke width (fraction of the rim radius)
@@ -63,6 +65,7 @@ VehicleBuilder.RimStyles = {
 	dish6 = { Spokes = 6, Width = 0.14 },
 	y7 = { Spokes = 7, Width = 0.15 },
 	steel = { Spokes = 0, Width = 0 },
+	forged = { Spokes = 20, Width = 0.05 },
 }
 
 --[[ Archetypes (metres). Body / Roof = { {z, y}, ... } with z measured from the front bumper.
@@ -483,6 +486,10 @@ local function finishProps(finish: string): (Enum.Material, number)
 		return PLASTIC, 0.24
 	elseif finish == "chrome" then
 		return PLASTIC, 0.5
+	elseif finish == "neon" then
+		return NEON, 0
+	elseif finish == "carbon" then
+		return Enum.Material.Fabric, 0.05
 	end
 	return PLASTIC, 0.08
 end
@@ -566,7 +573,9 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 		or s.RimColor
 		or (if rimStyleKey == "steel" then COLORS.Disc else VehicleBuilder.RimColors.Silver)
 	local caliperColor = s.Caliper or (if mods.Brakes then Color3.fromRGB(220, 30, 30) else COLORS.Disc)
-	local glassTransparency = if mods.Tint then 0.1 else 0.3
+	local mirrorTint = mods.Tint ~= nil and mods.Tint.mirror == true
+	local glassTransparency = if mirrorTint then 0.02 elseif mods.Tint then 0.1 else 0.3
+	local glassRefl = if mirrorTint then 0.75 else 0.25
 	local drop = (mods.Suspension and tonumber(mods.Suspension.drop)) or 0 -- metres
 
 	local Ls = s.L * S
@@ -629,7 +638,7 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 		local size = V3(b.w, b.t - b.b, b.z1 - b.z0)
 		local cf = CF(0, (b.b + b.t) / 2, (b.z0 + b.z1) / 2)
 		if kind == "glass" then
-			make("Part", car, "Glass", size, cf, COLORS.Glass, GLASS, { Transparency = glassTransparency, Reflectance = 0.25, CanCollide = true })
+			make("Part", car, "Glass", size, cf, COLORS.Glass, GLASS, { Transparency = glassTransparency, Reflectance = glassRefl, CanCollide = true })
 		elseif kind == "tub" then
 			dark("WheelWell", size, cf)
 		else
@@ -657,7 +666,7 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 		local cf = CF(0, base + h / 2, (z0 + z1) / 2) * (if t1 >= t0 then CFrame.identity else FLIP)
 		local size = V3(w, h, z1 - z0)
 		if kind == "glass" then
-			make("WedgePart", car, "Glass", size, cf, COLORS.Glass, GLASS, { Transparency = glassTransparency, Reflectance = 0.25 })
+			make("WedgePart", car, "Glass", size, cf, COLORS.Glass, GLASS, { Transparency = glassTransparency, Reflectance = glassRefl })
 		else
 			bodyPart("WedgePart", "Body", size, cf, { CastShadow = true })
 		end
@@ -995,6 +1004,9 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 
 	-- Spoilers -----------------------------------------------------------------------------------
 	local spoiler = (mods.Spoiler and mods.Spoiler.key) or s.Spoiler
+	if spoiler == "bigwing_premium" then
+		spoiler = "bigwing"
+	end
 	if spoiler == "none" then
 		spoiler = nil
 	end
@@ -1095,6 +1107,9 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 		local c = mods.Underglow.color
 		local glowColor = Color3.fromRGB(c[1] or 0, c[2] or 200, c[3] or 255)
 		local glow = neon("Underglow", V3(Wm * 0.8 * S, 0.05, (s.WB - 0.2) * S), CF(0, yl(s.Clr) - 0.02, zl(s.FO + s.WB / 2)), glowColor)
+		if mods.Underglow.rainbow then
+			glow:SetAttribute("Rainbow", true) -- animated locally by every client
+		end
 		local light = Instance.new("PointLight")
 		light.Color = glowColor
 		light.Range = 12

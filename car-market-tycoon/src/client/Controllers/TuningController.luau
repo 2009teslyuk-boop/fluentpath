@@ -38,6 +38,11 @@ local rotateConnection: RBXScriptConnection? = nil
 local angle = 0.7
 local busy = false
 
+local function needsPass(option): boolean
+	local passes = StateController.state and StateController.state.passes
+	return option.RequiresPass ~= nil and not (passes and passes[option.RequiresPass])
+end
+
 local function currentVehicle()
 	return vehicleId and StateController.findVehicle(vehicleId)
 end
@@ -125,6 +130,9 @@ local function refreshInfo()
 	if isInstalled then
 		buyButton.Text = "ВЖЕ ВСТАНОВЛЕНО"
 		C.setEnabled(buyButton, false)
+	elseif needsPass(option) then
+		buyButton.Text = "ВІДКРИТИ ПРЕМІУМ-ТЮНІНГ (R$)"
+		C.setEnabled(buyButton, not busy)
 	elseif level < (option.Level or 1) then
 		buyButton.Text = ("ПОТРІБЕН РІВЕНЬ %d"):format(option.Level)
 		C.setEnabled(buyButton, false)
@@ -152,7 +160,8 @@ local function refreshOptions()
 	local installed = vehicle.mods and vehicle.mods[category]
 	for i, option in TuningConfig.Options[category] do
 		local isInstalled = (option.Remove and installed == nil) or (installed ~= nil and installed.key == option.Key)
-		local locked = level < (option.Level or 1)
+		local premiumLocked = needsPass(option)
+		local locked = premiumLocked or level < (option.Level or 1)
 		local selected = option.Key == selectedOption
 		local cost = TuningConfig.cost(option, model and model.BasePrice or 0)
 		local row = create("TextButton", {
@@ -167,7 +176,7 @@ local function refreshOptions()
 			C.stroke(if selected then Theme.Accent elseif isInstalled then Theme.Money else Theme.Stroke, if selected then 2 else 1),
 			C.label({ Text = option.NameUA, Font = Theme.FontBold, TextSize = 15, Position = UDim2.fromOffset(if option.Swatch then 44 else 12, 4), Size = UDim2.new(0.62, -40, 0, 22), TextTruncate = Enum.TextTruncate.AtEnd, TextWrapped = false }),
 			C.label({
-				Text = if isInstalled then "встановлено" elseif locked then ("рівень %d"):format(option.Level) else (option.Tier or ""),
+				Text = if isInstalled then "встановлено" elseif premiumLocked then "преміум · потрібен пропуск" elseif locked then ("рівень %d"):format(option.Level) else (option.Tier or ""),
 				TextSize = 12,
 				TextColor3 = if isInstalled then Theme.Money elseif locked then Theme.Danger else Theme.Muted,
 				Position = UDim2.fromOffset(if option.Swatch then 44 else 12, 25),
@@ -279,6 +288,16 @@ local function build()
 		Parent = right,
 	}, "gold", function()
 		if busy or not vehicleId or not selectedOption then
+			return
+		end
+		local option = TuningConfig.getOption(category, selectedOption)
+		if option and needsPass(option) then
+			local ok, result = pcall(function()
+				return Net.get("PromptProduct"):InvokeServer(option.RequiresPass)
+			end)
+			if not (ok and type(result) == "table" and result.ok) then
+				HUDController.toast(if ok and type(result) == "table" then result.error else "Немає зв'язку з сервером", "error")
+			end
 			return
 		end
 		busy = true

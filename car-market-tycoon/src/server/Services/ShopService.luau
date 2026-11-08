@@ -8,6 +8,7 @@ local PolicyService = game:GetService("PolicyService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SpinConfig = require(Shared.Configs.SpinConfig)
+local GameConfig = require(Shared.Configs.GameConfig)
 local MonetizationConfig = require(Shared.Configs.MonetizationConfig)
 local RarityConfig = require(Shared.Configs.RarityConfig)
 local VehicleDatabase = require(Shared.Modules.VehicleDatabase)
@@ -21,7 +22,86 @@ local ShopService = {}
 local Services
 local rng = Random.new()
 local paidRandomRestricted: { [Player]: boolean } = {}
+local ownedPasses: { [Player]: { [string]: boolean } } = {}
 local MAX_RECEIPTS = 100
+local Effects = MonetizationConfig.Effects
+
+function ShopService.hasPass(player: Player, key: string): boolean
+	local passes = ownedPasses[player]
+	return passes ~= nil and passes[key] == true
+end
+
+function ShopService.ownedPasses(player: Player): { [string]: boolean }
+	return ownedPasses[player] or {}
+end
+
+-- Timed boosts ("cash", "luck"): seconds left (0 when inactive).
+function ShopService.boostLeft(player: Player, kind: string): number
+	local data = Services.PlayerDataService.getData(player)
+	local untilTime = data and data.boosts and data.boosts[kind] or 0
+	return math.max(0, untilTime - os.time())
+end
+
+-- Multiplier for passive income from passes and boosts.
+function ShopService.incomeMultiplier(player: Player): number
+	local m = 1
+	if ShopService.hasPass(player, "VIP") then
+		m *= Effects.VIPIncome
+	end
+	if ShopService.hasPass(player, "DoubleIncome") then
+		m *= Effects.DoubleIncome
+	end
+	if ShopService.boostLeft(player, "cash") > 0 then
+		m *= Effects.CashBoost
+	end
+	return m
+end
+
+-- Multiplier for Epic+ odds under tarps.
+function ShopService.luckMultiplier(player: Player): number
+	local m = 1
+	if ShopService.hasPass(player, "Lucky") then
+		m *= Effects.LuckyMultiplier
+	end
+	if ShopService.boostLeft(player, "luck") > 0 then
+		m *= Effects.LuckBoostMultiplier
+	end
+	return m
+end
+
+local function addVipTag(player: Player, character: Model)
+	if not ShopService.hasPass(player, "VIP") then
+		return
+	end
+	local head = character:WaitForChild("Head", 10) :: BasePart?
+	if not head or head:FindFirstChild("VipTag") then
+		return
+	end
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "VipTag"
+	tag.Size = UDim2.fromScale(3, 0.9)
+	tag.StudsOffset = Vector3.new(0, 2.6, 0)
+	tag.MaxDistance = 80
+	tag.LightInfluence = 0
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBlack
+	label.TextScaled = true
+	label.Text = "★ VIP ★"
+	label.TextColor3 = Color3.fromRGB(255, 205, 70)
+	label.TextStrokeTransparency = 0.3
+	label.Parent = tag
+	tag.Parent = head
+end
+
+local function setPass(player: Player, key: string)
+	ownedPasses[player] = ownedPasses[player] or {}
+	ownedPasses[player][key] = true
+	if key == "VIP" and player.Character then
+		task.spawn(addVipTag, player, player.Character)
+	end
+end
 
 local function grantCar(player: Player, record, source: string)
 	local data = Services.PlayerDataService.getData(player)
@@ -96,8 +176,12 @@ local function doSpin(player: Player)
 	return result
 end
 
-function ShopService.freeSpinReadyAt(data): number
-	return (data.lastFreeSpin or 0) + SpinConfig.FreeCooldownSeconds
+function ShopService.freeSpinReadyAt(data, player: Player?): number
+	local cooldown = SpinConfig.FreeCooldownSeconds
+	if player and ShopService.hasPass(player, "VIP") then
+		cooldown = Effects.VIPSpinCooldownSeconds
+	end
+	return (data.lastFreeSpin or 0) + cooldown
 end
 
 function ShopService.isPaidRandomRestricted(player: Player): boolean
@@ -109,7 +193,7 @@ function ShopService.spinFree(player: Player)
 	if not data then
 		return { ok = false, error = "Дані ще завантажуються" }
 	end
-	if os.time() < ShopService.freeSpinReadyAt(data) then
+	if os.time() < ShopService.freeSpinReadyAt(data, player) then
 		return { ok = false, error = "Безкоштовна прокрутка буде доступна пізніше" }
 	end
 	data.lastFreeSpin = os.time()
@@ -121,9 +205,23 @@ function ShopService.promptProduct(player: Player, productKey: any)
 	if type(productKey) ~= "string" then
 		return { ok = false, error = "Невірний запит" }
 	end
-	local product = MonetizationConfig.Products[productKey]
 	local data = Services.PlayerDataService.getData(player)
-	if not product or not data then
+	if not data then
+		return { ok = false, error = "Дані ще завантажуються" }
+	end
+	local pass = MonetizationConfig.GamePasses[productKey]
+	if pass then
+		if pass.GamePassId == 0 then
+			return { ok = false, error = "Пропуск ще не налаштовано (GamePassId = 0 у MonetizationConfig)" }
+		end
+		if ShopService.hasPass(player, productKey) then
+			return { ok = false, error = "Цей пропуск уже ваш" }
+		end
+		MarketplaceService:PromptGamePassPurchase(player, pass.GamePassId)
+		return { ok = true }
+	end
+	local product = MonetizationConfig.Products[productKey]
+	if not product then
 		return { ok = false, error = "Такого товару немає" }
 	end
 	if product.ProductId == 0 then
@@ -134,6 +232,12 @@ function ShopService.promptProduct(player: Player, productKey: any)
 	end
 	if product.ModelKey and data.limitedOwned[productKey] then
 		return { ok = false, error = "Це лімітоване авто вже ваше — його можна купити лише раз" }
+	end
+	if product.Kind == "garage" and data.garageSlots >= product.Cap then
+		return { ok = false, error = ("Гараж уже максимального розміру (%d)"):format(product.Cap) }
+	end
+	if product.Kind == "showroom" and data.displayLevel >= #GameConfig.DisplayLevels then
+		return { ok = false, error = "Шоурум уже максимального розміру" }
 	end
 	MarketplaceService:PromptProductPurchase(player, product.ProductId)
 	return { ok = true }
@@ -160,6 +264,26 @@ local function processReceipt(receipt)
 	if productKey == "SpinPaid" then
 		local result = doSpin(player)
 		Net.get("SpinResult"):FireClient(player, result)
+	elseif product.Kind == "cash" then
+		Services.EconomyService.addCash(player, product.Amount, "robux pack " .. productKey)
+		Services.EconomyService.notify(player, ("Нараховано %s!"):format(Format.money(product.Amount)), "success")
+	elseif product.Kind == "garage" then
+		data.garageSlots = math.min(product.Cap, data.garageSlots + product.Amount)
+		Services.EconomyService.notify(player, ("Гараж розширено до %d місць"):format(data.garageSlots), "success")
+	elseif product.Kind == "showroom" then
+		if data.displayLevel < #GameConfig.DisplayLevels then
+			data.displayLevel += 1
+			Services.VehicleService.layoutShowroom(player)
+			Services.EconomyService.notify(player, ("Шоурум розширено до %d місць"):format(GameConfig.DisplayLevels[data.displayLevel].Capacity), "success")
+		else
+			Services.EconomyService.addCash(player, 1000000, "showroom level compensation")
+			Services.EconomyService.notify(player, "Шоурум уже максимальний — нараховано $1 000 000", "info")
+		end
+	elseif product.Kind == "boost" then
+		data.boosts = data.boosts or {}
+		local current = math.max(os.time(), data.boosts[product.Boost] or 0)
+		data.boosts[product.Boost] = current + product.Minutes * 60
+		Services.EconomyService.notify(player, product.NameUA .. " активовано!", "level")
 	elseif product.ModelKey then
 		if data.limitedOwned[productKey] then
 			-- bought twice through a race between two prompts: compensate instead of a duplicate
@@ -197,6 +321,25 @@ local function processReceipt(receipt)
 end
 
 function ShopService.setupPlayer(player: Player)
+	ownedPasses[player] = {}
+	task.spawn(function()
+		for key, pass in MonetizationConfig.GamePasses do
+			if pass.GamePassId ~= 0 then
+				local ok, owns = pcall(function()
+					return MarketplaceService:UserOwnsGamePassAsync(player.UserId, pass.GamePassId)
+				end)
+				if ok and owns and player.Parent then
+					setPass(player, key)
+				end
+			end
+		end
+		if player.Parent then
+			Services.EconomyService.pushState(player)
+		end
+	end)
+	player.CharacterAdded:Connect(function(character)
+		addVipTag(player, character)
+	end)
 	task.spawn(function()
 		local ok, info = pcall(function()
 			return PolicyService:GetPolicyInfoForPlayerAsync(player)
@@ -211,6 +354,7 @@ end
 
 function ShopService.cleanupPlayer(player: Player)
 	paidRandomRestricted[player] = nil
+	ownedPasses[player] = nil
 end
 
 function ShopService.init(services)
@@ -219,6 +363,18 @@ end
 
 function ShopService.start()
 	MarketplaceService.ProcessReceipt = processReceipt
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, purchased)
+		if not purchased then
+			return
+		end
+		local key, pass = MonetizationConfig.byGamePassId(gamePassId)
+		if key and Services.PlayerDataService.isLoaded(player) then
+			setPass(player, key)
+			print(("[Shop] %s bought game pass %s"):format(player.Name, key))
+			Services.EconomyService.notify(player, ("Пропуск «%s» активовано!"):format(pass.NameUA), "level")
+			Services.EconomyService.pushState(player)
+		end
+	end)
 end
 
 return ShopService
