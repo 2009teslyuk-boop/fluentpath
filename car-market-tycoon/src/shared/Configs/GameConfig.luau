@@ -21,6 +21,12 @@ GameConfig.Economy = {
 	},
 }
 
+-- Testing helpers. They only work inside Roblox Studio (RunService:IsStudio()),
+-- so a published game is never affected even if you forget to switch them off.
+GameConfig.TestMode = {
+	FreeLotsInStudio = true, -- every lot costs $0 when you press Play in Studio
+}
+
 GameConfig.Yard = {
 	Rows = 2,
 	PerRow = 9, -- 2 x 9 = 18 lots

@@ -2,6 +2,7 @@
 -- The car under a tarp is rolled on the server and kept only in server memory until purchase,
 -- so clients cannot peek at the rarity. Buying is validated and applied atomically.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared.Configs.GameConfig)
@@ -179,7 +180,7 @@ local function buildTarp(lot: Lot, owner: Player, record, lotCF: CFrame): Model
 	price.Font = Enum.Font.GothamBlack
 	price.TextScaled = true
 	price.TextColor3 = Color3.fromRGB(130, 235, 150)
-	price.Text = Format.money(lot.price)
+	price.Text = if lot.price == 0 then "БЕЗКОШТОВНО" else Format.money(lot.price)
 	price.Parent = frame
 
 	-- proximity prompt at the nose (the aisle side)
@@ -233,6 +234,9 @@ local function restock(player: Player, lot: Lot)
 	-- small random spread so neighbouring lots of the same tier do not all look identical
 	local jitter = 0.94 + rng:NextNumber() * 0.12
 	lot.price = Util.roundTo(tierPrices[tier] * jitter, GameConfig.Yard.PriceRounding)
+	if GameConfig.TestMode.FreeLotsInStudio and RunService:IsStudio() then
+		lot.price = 0 -- Studio test mode: free lots
+	end
 	local multipliers = TarpConfig.get(tier).RarityMultipliers
 	local luck = Services.ShopService.luckMultiplier(player)
 	if luck ~= 1 then
@@ -401,6 +405,9 @@ end
 function YardService.init(services)
 	Services = services
 	computeTierPrices()
+	if GameConfig.TestMode.FreeLotsInStudio and RunService:IsStudio() then
+		warn("[Yard] TEST MODE: all lots are free in Studio (GameConfig.TestMode.FreeLotsInStudio)")
+	end
 	ReplicatedStorage:SetAttribute("TierPrice_Canvas", tierPrices.Canvas)
 	ReplicatedStorage:SetAttribute("TierPrice_Premium", tierPrices.Premium)
 	ReplicatedStorage:SetAttribute("TierPrice_Elite", tierPrices.Elite)
