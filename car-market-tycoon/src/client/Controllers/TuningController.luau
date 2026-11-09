@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared.Modules.Net)
 local Format = require(Shared.Modules.Format)
 local TuningConfig = require(Shared.Configs.TuningConfig)
+local GameConfig = require(Shared.Configs.GameConfig)
 local VehicleDatabase = require(Shared.Modules.VehicleDatabase)
 local VehicleBuilder = require(Shared.Modules.VehicleBuilder)
 local Util = require(Shared.Modules.Util)
@@ -113,7 +114,8 @@ local function refreshInfo()
 	local cash = state and state.cash or 0
 	local option = selectedOption and TuningConfig.getOption(category, selectedOption)
 	local installed = vehicle.mods and vehicle.mods[category]
-	local cost = if option then TuningConfig.cost(option, model and model.BasePrice or 0) else 0
+	local free = GameConfig.freeUpgrades()
+	local cost = if option and not free then TuningConfig.cost(option, model and model.BasePrice or 0) else 0
 
 	local before = TuningConfig.effectivePower(vehicle)
 	local after = TuningConfig.effectivePower(previewRecord(vehicle))
@@ -133,7 +135,7 @@ local function refreshInfo()
 	elseif needsPass(option) then
 		buyButton.Text = "ВІДКРИТИ ПРЕМІУМ-ТЮНІНГ (R$)"
 		C.setEnabled(buyButton, not busy)
-	elseif level < (option.Level or 1) then
+	elseif level < (option.Level or 1) and not free then
 		buyButton.Text = ("ПОТРІБЕН РІВЕНЬ %d"):format(option.Level)
 		C.setEnabled(buyButton, false)
 	elseif cash < cost then
@@ -161,7 +163,7 @@ local function refreshOptions()
 	for i, option in TuningConfig.Options[category] do
 		local isInstalled = (option.Remove and installed == nil) or (installed ~= nil and installed.key == option.Key)
 		local premiumLocked = needsPass(option)
-		local locked = premiumLocked or level < (option.Level or 1)
+		local locked = premiumLocked or (level < (option.Level or 1) and not GameConfig.freeUpgrades())
 		local selected = option.Key == selectedOption
 		local cost = TuningConfig.cost(option, model and model.BasePrice or 0)
 		local row = create("TextButton", {

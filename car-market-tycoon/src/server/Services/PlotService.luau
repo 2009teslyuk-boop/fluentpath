@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared.Configs.GameConfig)
 local Build = require(script.Parent.Parent.Lib.Build)
+local ShowroomBuilder = require(script.Parent.Parent.Lib.ShowroomBuilder)
 
 local V3, CF = Vector3.new, CFrame.new
 local M = Enum.Material
@@ -40,6 +41,8 @@ export type Plot = {
 	spotStrips: { BasePart },
 	signLabel: TextLabel,
 	characterConnection: RBXScriptConnection?,
+	building: Model?,
+	buildingTier: number?,
 }
 
 local plots: { Plot } = {}
@@ -140,7 +143,7 @@ local function buildPlot(index: number, parent: Instance): Plot
 	-- spawn marker + lamps + greenery
 	P("HomePad", V3(0.2, 7, 7), SPAWN_LOCAL * CF(0, -3.15, 0) * CFrame.Angles(0, 0, math.pi / 2), accent, M.Neon, { Shape = Enum.PartType.Cylinder, CanCollide = false, Transparency = 0.25 })
 	for _, x in { -(W / 2 - 4), W / 2 - 4 } do
-		for _, z in { -60, -20, 30, 70 } do
+		for _, z in { 30, 70 } do -- the showroom building has its own lights
 			Build.lamp(model, base * CF(x, 0.2, z) * CFrame.Angles(0, if x < 0 then -math.pi / 2 else math.pi / 2, 0), Color3.fromRGB(255, 236, 205))
 		end
 	end
@@ -163,6 +166,8 @@ local function buildPlot(index: number, parent: Instance): Plot
 		spotStrips = spotStrips,
 		signLabel = signLabel,
 		characterConnection = nil,
+		building = nil,
+		buildingTier = nil,
 	}
 end
 
@@ -175,6 +180,24 @@ function PlotService.refreshSpots(plot: Plot, capacity: number)
 		strip.Color = if active then plot.accent else Color3.fromRGB(70, 72, 80)
 		strip.Material = if active then M.Neon else M.SmoothPlastic
 	end
+end
+
+-- Rebuilds the dealership building when the showroom level reaches a new tier.
+-- Returns the previous tier when the building changed, otherwise nil.
+function PlotService.setShowroomTier(plot: Plot, level: number, ownerName: string): number?
+	local tier = GameConfig.showroomTier(level)
+	if plot.buildingTier == tier and plot.building and plot.building.Parent then
+		return nil
+	end
+	local previous = plot.buildingTier
+	if plot.building then
+		plot.building:Destroy()
+	end
+	local building = ShowroomBuilder.build(tier, plot.cframe, plot.accent, ownerName)
+	building.Parent = plot.model
+	plot.building = building
+	plot.buildingTier = tier
+	return previous or 0
 end
 
 function PlotService.spawnCFrame(plot: Plot): CFrame
@@ -242,6 +265,11 @@ function PlotService.release(player: Player)
 	plot.signLabel.Text = "ВІЛЬНА ДІЛЯНКА"
 	plot.yard:ClearAllChildren()
 	plot.showroom:ClearAllChildren()
+	if plot.building then
+		plot.building:Destroy()
+		plot.building = nil
+	end
+	plot.buildingTier = nil
 	PlotService.refreshSpots(plot, 0)
 end
 

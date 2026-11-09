@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local TuningConfig = require(Shared.Configs.TuningConfig)
+local GameConfig = require(Shared.Configs.GameConfig)
 local VehicleDatabase = require(Shared.Modules.VehicleDatabase)
 
 local CustomizationService = {}
@@ -41,11 +42,11 @@ function CustomizationService.apply(player: Player, vehicleId: any, category: an
 		if option.RequiresPass and not Services.ShopService.hasPass(player, option.RequiresPass) then
 			return { ok = false, error = "Потрібен пропуск «Преміум-тюнінг» (Мега-маркет → Переваги)" }
 		end
-		if (data.level or 1) < (option.Level or 1) then
+		if (data.level or 1) < (option.Level or 1) and not GameConfig.freeUpgrades() then
 			return { ok = false, error = ("Потрібен рівень %d"):format(option.Level) }
 		end
 		local model = VehicleDatabase.getModel(record.modelKey)
-		local cost = TuningConfig.cost(option, model and model.BasePrice or 0)
+		local cost = if GameConfig.freeUpgrades() then 0 else TuningConfig.cost(option, model and model.BasePrice or 0)
 		if not Services.EconomyService.trySpend(player, cost, ("tuning %s/%s"):format(category, option.Key)) then
 			return { ok = false, error = "Недостатньо коштів" }
 		end

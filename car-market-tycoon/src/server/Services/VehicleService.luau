@@ -164,8 +164,10 @@ local function updatePriceTag(model: Model, price: number?)
 	label.Text = "ПРОДАЄТЬСЯ · " .. Format.money(price)
 end
 
-local function buildDisplayModel(player: Player, record): Model
-	local model = VehicleBuilder.build(record)
+local FULL_DETAIL_SPOTS = 12 -- cars beyond this spot use the lighter model (no interior / lug nuts)
+
+local function buildDisplayModel(player: Player, record, spot: number): Model
+	local model = VehicleBuilder.build(record, { lowDetail = spot > FULL_DETAIL_SPOTS })
 	model.Name = "Display_" .. record.id
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	model:SetAttribute("OwnerUserId", player.UserId)
@@ -196,7 +198,7 @@ function VehicleService.layoutShowroom(player: Player)
 		local target = plot.cframe * Services.PlotService.spotLocalCFrame(spot)
 		local model = models[id]
 		if not model then
-			model = buildDisplayModel(player, data.vehicles[id])
+			model = buildDisplayModel(player, data.vehicles[id], spot)
 			models[id] = model
 			model:PivotTo(target)
 			model.Parent = plot.showroom
@@ -207,6 +209,11 @@ function VehicleService.layoutShowroom(player: Player)
 		updatePriceTag(model, data.listings[id])
 	end
 	Services.PlotService.refreshSpots(plot, VehicleService.capacityOf(data))
+	local previousTier = Services.PlotService.setShowroomTier(plot, data.displayLevel, player.DisplayName)
+	if previousTier and previousTier > 0 then
+		local tier = GameConfig.ShowroomTiers[GameConfig.showroomTier(data.displayLevel)]
+		Services.EconomyService.notify(player, ("Ваш автосалон перебудовано: %s!"):format(tier.NameUA), "level")
+	end
 end
 
 -- Rebuilds one showroom model (after tuning).

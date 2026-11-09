@@ -17,7 +17,8 @@ function UpgradeService.buyDisplayUpgrade(player: Player)
 	if not nextLevel then
 		return { ok = false, error = "Шоурум уже максимального розміру" }
 	end
-	if not Services.EconomyService.trySpend(player, nextLevel.Cost, "display upgrade " .. (data.displayLevel + 1)) then
+	local cost = if GameConfig.freeUpgrades() then 0 else nextLevel.Cost
+	if not Services.EconomyService.trySpend(player, cost, "display upgrade " .. (data.displayLevel + 1)) then
 		return { ok = false, error = "Недостатньо коштів" }
 	end
 	data.displayLevel += 1

@@ -143,6 +143,7 @@ function EconomyService.buildState(player: Player)
 		limitedOwned = data.limitedOwned,
 		autoSell = data.settings.autoSell,
 		listingsCount = Util.count(data.listings),
+		showroomTier = GameConfig.showroomTier(data.displayLevel),
 	}
 end
 

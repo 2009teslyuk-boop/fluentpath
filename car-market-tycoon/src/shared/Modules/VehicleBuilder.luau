@@ -1117,19 +1117,205 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 		light.Parent = glow
 	end
 
+	-- Body details ------------------------------------------------------------------------------------
+	local AMBER = Color3.fromRGB(255, 150, 20)
+	local frontArchEndZ = g.axles[1] + g.Ra + 0.05
+	local rearArchStartZ = g.axles[2] - g.Ra - 0.05
+	local crease = paintColor:Lerp(Color3.new(1, 1, 1), 0.12)
+	local function sideX(z: number, extra: number): number
+		return Wm * S * g.widthF(z) / 2 + extra
+	end
+
+	for _, side in { -1, 1 } do
+		-- character line along the doors
+		local y0 = g.bodyTop(frontArchEndZ) - 0.16
+		local y1 = g.bodyTop(rearArchStartZ) - 0.16
+		lineBetween("CharacterLine", V3(side * sideX(frontArchEndZ, 0.015), yl(y0), zl(frontArchEndZ)), V3(side * sideX(rearArchStartZ, 0.015), yl(y1), zl(rearArchStartZ)), 0.04, 0.05, crease, paintMaterial, { Reflectance = paintRefl + 0.1 })
+		-- side indicator on the front fender and turn signal on the mirror
+		local markerZ = math.max(0.25, g.axles[1] - g.Ra - 0.12)
+		make("Part", car, "SideMarker", V3(0.03, 0.035 * S, 0.1 * S), CF(side * sideX(markerZ, 0.01), yl(g.bodyTop(markerZ) - 0.12), zl(markerZ)), AMBER, NEON)
+		local mz = s.WS0 + 0.18
+		make("Part", car, "MirrorSignal", V3(0.05, 0.05, 0.36), CF(side * sideX(mz, 0.24), yl(g.bodyTop(mz)) + 0.3, zl(mz)), AMBER, NEON)
+		-- window top trim (chrome on luxury cars)
+		if not s.Canopy and s.R1 - s.WS1 > 0.2 then
+			local gx = Wm * S * GH / 2 + 0.03
+			lineBetween("WindowTopTrim", V3(side * gx, yl(g.cabinTop(s.WS1)) - 0.12, zl(s.WS1)), V3(side * gx, yl(g.cabinTop(s.R1)) - 0.12, zl(s.R1)), 0.05, 0.06, if s.Chrome then COLORS.Chrome else COLORS.Trim, PLASTIC, { Reflectance = if s.Chrome then 0.45 else 0 })
+		end
+		-- rear reflectors
+		make("Part", car, "Reflector", V3(0.12 * S, 0.03 * S, 0.04), CF(side * Wm * 0.4 * S, yl(clr + 0.2), rearZ - 0.01), Color3.fromRGB(150, 10, 20), PLASTIC)
+		-- mud flaps on off-roaders / pickups
+		if s.Flares then
+			for _, a in g.axles do
+				dark("MudFlap", V3(twS * 0.9, 0.18 * S, 0.03), CF(side * (sideX(a, 0) - twS / 2), yl(clr + 0.12), zl(a + g.Ra - 0.02)), "Part", COLORS.Trim)
+			end
+		end
+	end
+
+	-- side skirts between the wheel arches
+	if rearArchStartZ > frontArchEndZ then
+		local zc = (frontArchEndZ + rearArchStartZ) / 2
+		dark("SideSkirt", V3(Wm * S * g.widthF(zc) + 0.06, 0.1 * S, (rearArchStartZ - frontArchEndZ) * S), CF(0, yl(clr + 0.06), zl(zc)), "Part", COLORS.Trim)
+	end
+
+	-- fuel cap on the right rear quarter
+	do
+		local fz = math.max(s.RW1 - 0.3, g.axles[2] - g.Ra - 0.25)
+		if s.Rear == "bed" then
+			fz = s.RW1 - 0.25
+		end
+		local fy = yl(g.bodyTop(fz) - 0.18)
+		make("Part", car, "FuelDoorSeam", V3(0.03, 0.15 * S, 0.15 * S), CF(sideX(fz, 0.005), fy, zl(fz)) , COLORS.Trim, PLASTIC, { Shape = Enum.PartType.Cylinder })
+		make("Part", car, "FuelDoor", V3(0.035, 0.13 * S, 0.13 * S), CF(sideX(fz, 0.01), fy, zl(fz)), paintColor, paintMaterial, { Shape = Enum.PartType.Cylinder, Reflectance = paintRefl })
+	end
+
+	-- hood shut lines
+	if s.WS0 > 0.9 then
+		for _, side in { -1, 1 } do
+			onSurface("HoodLine", 0.2, s.WS0 - 0.06, side * Wm * 0.34 * S, 0.025, 0.003, COLORS.Trim, PLASTIC, 0.03)
+		end
+	end
+
+	-- windscreen wipers
+	local gwS = Wm * S * GH
+	local wiperY = yl(g.bodyTop(s.WS0)) + 0.06
+	for _, side in { -1, 1 } do
+		make("Part", car, "Wiper", V3(gwS * 0.42, 0.04, 0.05), CF(side * gwS * 0.2 - 0.15, wiperY, zl(s.WS0 + 0.05)) * CFrame.Angles(0, side * 0.08, 0.06), COLORS.Trim, PLASTIC)
+	end
+
+	-- shark-fin antenna, third brake light, rear wiper, sunroof
+	if not s.Canopy then
+		local az = s.R1 - 0.12
+		make("WedgePart", car, "Antenna", V3(0.06 * S, 0.07 * S, 0.18 * S), CF(0, yl(g.cabinTop(az)) + 0.12 + 0.035 * S, zl(az)), if s.RoofBlack then COLORS.Trim else paintColor, paintMaterial, { Reflectance = paintRefl })
+		if s.Doors >= 4 and s.R1 - s.WS1 > 1.2 then
+			local z0, z1 = s.WS1 + 0.15, s.WS1 + 0.75
+			lineBetween("Sunroof", V3(0, yl(g.cabinTop(z0)) + 0.13, zl(z0)), V3(0, yl(g.cabinTop(z1)) + 0.13, zl(z1)), gwS * 0.55, 0.03, COLORS.Glass, GLASS, { Reflectance = 0.4 })
+		end
+	end
+	if s.RW1 - s.R1 > 0.12 then
+		make("Part", car, "ThirdBrakeLight", V3(gwS * 0.24, 0.025 * S, 0.06), CF(0, yl(g.cabinTop(s.R1 + 0.03)) - 0.05, zl(s.R1 + 0.03)), COLORS.Tail, NEON)
+	end
+	if s.Rear == "hatch" or s.Rear == "wagon" then
+		local rz = (s.R1 + s.RW1) / 2
+		make("Part", car, "RearWiper", V3(gwS * 0.3, 0.04, 0.05), CF(0.25, yl((g.cabinTop(s.R1) + g.bodyTop(s.RW1)) / 2) - 0.1, zl(rz) + 0.06) * CFrame.Angles(0, 0, 0.25), COLORS.Trim, PLASTIC)
+	end
+
+	-- fog lights, bumper vents and splitter on the front face
+	if faceTop - clr > 0.25 then
+		for _, side in { -1, 1 } do
+			faceDisk("FogLight", true, side * Wm * 0.37 * S, yl(clr + 0.13), 0.08, Color3.fromRGB(255, 236, 200))
+			dark("BumperVent", V3(0.02 * S, 0.12 * S, 0.05), CF(side * Wm * 0.45 * S, yl(clr + 0.16), faceZ))
+		end
+	end
+	if s.Diffuser or s.Grille == "mesh" then
+		dark("Splitter", V3(Wm * 0.86 * S, 0.025 * S, 0.16 * S), CF(0, yl(clr + 0.012), zl(0.04)), "Part", COLORS.Carbon)
+	end
+
+	-- headlight projectors and reverse lights
+	if not opts.lowDetail and (head.Style == "slim" or head.Style == "angular") then
+		for _, side in { -1, 1 } do
+			local wf = g.widthF(head.Z + head.Len / 2)
+			local hx = side * (Wm * wf / 2 - head.Inset - head.W / 2) * S
+			for k = 1, 2 do
+				local pz = head.Z + head.Len * (0.25 + 0.3 * (k - 1))
+				local disk = lampDisk("Projector", pz, hx + side * (k - 1.5) * head.W * 0.3 * S, head.W * 0.26, Color3.fromRGB(255, 255, 255))
+				disk.CFrame += disk.CFrame.XVector * 0.04
+			end
+		end
+	end
+	do
+		local tail = s.Tail
+		if tail.Style == "slim" or tail.Style == "bar" then
+			local tz1 = s.L - tail.Z
+			for _, side in { -1, 1 } do
+				local tx = side * (Wm * g.widthF(tz1) / 2 - tail.Inset - tail.W + 0.05) * S
+				onSurface("ReverseLight", tz1 - math.min(tail.Len, 0.08), tz1 - 0.01, tx, 0.06 * S, 0.012, Color3.fromRGB(240, 240, 255), NEON)
+			end
+		end
+	end
+
+	-- emblems, badge and number plates
+	local function surfaceText(part: BasePart, face: Enum.NormalId, text: string, color: Color3)
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 40
+		gui.LightInfluence = 1
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.Font = Enum.Font.GothamBlack
+		label.TextScaled = true
+		label.TextColor3 = color
+		label.Text = text
+		label.Parent = gui
+		gui.Parent = part
+	end
+	local modelInfo = VehicleDatabase.getModel(record.modelKey)
+	if faceTop - clr > 0.12 then
+		chrome("FrontEmblem", V3(0.03, 0.07 * S, 0.07 * S), CF(0, yl(faceTop - 0.05), faceZ - 0.03) * FACE_Z, "Part", { Shape = Enum.PartType.Cylinder })
+	end
+	chrome("RearEmblem", V3(0.03, 0.06 * S, 0.06 * S), CF(0, yl(rearTop - 0.08), rearZ + 0.005) * FACE_Z, "Part", { Shape = Enum.PartType.Cylinder })
+	if not opts.lowDetail then
+		local badge = make("Part", car, "Badge", V3(0.3 * S, 0.035 * S, 0.02), CF(Wm * 0.25 * S, yl(rearTop - 0.09), rearZ + 0.01), COLORS.Chrome, PLASTIC, { Transparency = 1 })
+		surfaceText(badge, Enum.NormalId.Back, string.upper(modelInfo and modelInfo.Model or ""), COLORS.Chrome)
+		local plateRear = car:FindFirstChild("PlateRear") :: BasePart?
+		local hash = 0
+		for i = 1, #record.id do
+			hash = (hash * 31 + string.byte(record.id, i)) % 2147483647
+		end
+		local letters = "ABCEHIKMOPTX"
+		local function letter(n: number): string
+			local k = (hash // n) % #letters + 1
+			return letters:sub(k, k)
+		end
+		local plate = ("%s%s %04d %s%s"):format(letter(1), letter(7), hash % 10000, letter(13), letter(29))
+		if plateRear then
+			surfaceText(plateRear, Enum.NormalId.Back, plate, Color3.fromRGB(20, 20, 24))
+		end
+		if faceTop - clr > 0.2 then
+			local plateFront = make("Part", car, "PlateFront", V3(0.52 * S, 0.12 * S, 0.05), CF(0, yl(clr + 0.12), faceZ - 0.04), COLORS.Plate, PLASTIC)
+			surfaceText(plateFront, Enum.NormalId.Front, plate, Color3.fromRGB(20, 20, 24))
+		end
+	end
+
+	-- lug nuts
+	if not opts.lowDetail and spokes > 0 then
+		for _, a in g.axles do
+			for _, side in { -1, 1 } do
+				local x = side * (Wm * S * g.widthF(a) / 2 - twS / 2 - 0.04) + side * (twS / 2 + 0.1)
+				for k = 1, 5 do
+					local ang = (k / 5) * math.pi * 2
+					local offset = CFrame.Angles(ang, 0, 0) * CF(0, 0, -Rs * 0.17)
+					make("Part", car, "LugNut", V3(0.05, 0.05, 0.05), CF(x, Rs, zl(a)) * offset, COLORS.Chrome, PLASTIC, { Shape = Enum.PartType.Cylinder, Reflectance = 0.4 })
+				end
+			end
+		end
+	end
+
 	-- Interior ------------------------------------------------------------------------------------------
 	if not opts.lowDetail then
 		local inner = interior.Color
 		local belt = yl(g.bodyTop(s.WS0 + 0.4))
 		local gw = Wm * S * GH
 		make("Part", car, "Dashboard", V3(gw - 0.2, 0.14 * S, 0.3 * S), CF(0, belt + 0.07 * S, zl(s.WS0 + 0.25)), COLORS.Dark, PLASTIC)
+		make("Part", car, "Screen", V3(0.3 * S, 0.12 * S, 0.02), CF(0, belt + 0.19 * S, zl(s.WS0 + 0.36)) * CFrame.Angles(-0.25, 0, 0), Color3.fromRGB(60, 120, 200), NEON, { Transparency = 0.3 })
+		make("Part", car, "Cluster", V3(0.26 * S, 0.08 * S, 0.02), CF(-gw / 4, belt + 0.17 * S, zl(s.WS0 + 0.4)) * CFrame.Angles(-0.4, 0, 0), Color3.fromRGB(200, 120, 40), NEON, { Transparency = 0.4 })
 		make("Part", car, "SteeringWheel", V3(0.03 * S, 0.36 * S, 0.36 * S), CF(-gw / 4, belt + 0.22 * S, zl(s.WS0 + 0.5)) * CFrame.Angles(-0.4, 0, 0) * FACE_Z, COLORS.Dark, PLASTIC, { Shape = Enum.PartType.Cylinder })
+		make("Part", car, "SteeringHub", V3(0.04 * S, 0.12 * S, 0.12 * S), CF(-gw / 4, belt + 0.22 * S, zl(s.WS0 + 0.5) + 0.03) * CFrame.Angles(-0.4, 0, 0) * FACE_Z, COLORS.Disc, PLASTIC, { Shape = Enum.PartType.Cylinder })
 		local seatZ = math.max(s.WS1, s.WS0 + 0.75) + 0.15
+		make("Part", car, "Console", V3(0.18 * S, 0.12 * S, 0.7 * S), CF(0, belt + 0.02 * S, zl(seatZ - 0.25)), COLORS.Dark, PLASTIC)
+		make("Part", car, "GearLever", V3(0.03 * S, 0.1 * S, 0.03 * S), CF(0, belt + 0.12 * S, zl(seatZ - 0.45)), COLORS.Chrome, PLASTIC, { Reflectance = 0.3 })
 		for _, side in { -1, 1 } do
-			make("Part", car, "SeatBack", V3(gw / 2 - 0.4, 0.55 * S, 0.1 * S), CF(side * gw / 4, belt + 0.18 * S, zl(seatZ)) * CFrame.Angles(-0.2, 0, 0), inner, PLASTIC)
+			local sx = side * gw / 4
+			make("Part", car, "SeatBase", V3(gw / 2 - 0.45, 0.1 * S, 0.45 * S), CF(sx, belt - 0.02 * S, zl(seatZ - 0.2)), inner, PLASTIC)
+			make("Part", car, "SeatBack", V3(gw / 2 - 0.4, 0.55 * S, 0.1 * S), CF(sx, belt + 0.18 * S, zl(seatZ)) * CFrame.Angles(-0.2, 0, 0), inner, PLASTIC)
+			make("Part", car, "Headrest", V3(gw / 2 - 0.9, 0.14 * S, 0.08 * S), CF(sx, belt + 0.5 * S, zl(seatZ + 0.06)) * CFrame.Angles(-0.2, 0, 0), inner:Lerp(Color3.new(0, 0, 0), 0.2), PLASTIC)
 		end
 		if s.Doors >= 4 and s.R1 - seatZ > 0.9 then
 			make("Part", car, "RearBench", V3(gw - 0.4, 0.5 * S, 0.1 * S), CF(0, belt + 0.16 * S, zl(seatZ + 0.85)) * CFrame.Angles(-0.2, 0, 0), inner, PLASTIC)
+			for _, side in { -1, 1 } do
+				make("Part", car, "RearHeadrest", V3(gw / 2 - 0.9, 0.12 * S, 0.08 * S), CF(side * gw / 4, belt + 0.46 * S, zl(seatZ + 0.9)) * CFrame.Angles(-0.2, 0, 0), inner:Lerp(Color3.new(0, 0, 0), 0.2), PLASTIC)
+			end
 		end
 	end
 

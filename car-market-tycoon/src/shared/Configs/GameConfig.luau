@@ -25,7 +25,12 @@ GameConfig.Economy = {
 -- so a published game is never affected even if you forget to switch them off.
 GameConfig.TestMode = {
 	FreeLotsInStudio = true, -- every lot costs $0 when you press Play in Studio
+	FreeUpgradesInStudio = true, -- showroom upgrades and tuning cost $0 in Studio
 }
+
+function GameConfig.freeUpgrades(): boolean
+	return GameConfig.TestMode.FreeUpgradesInStudio and game:GetService("RunService"):IsStudio()
+end
 
 GameConfig.Yard = {
 	Rows = 2,
@@ -73,6 +78,25 @@ GameConfig.DisplayLevels = {
 	{ Capacity = 35, Cost = 14000000 },
 	{ Capacity = 40, Cost = 32000000 },
 }
+
+-- The dealership building grows with the showroom level
+GameConfig.ShowroomTiers = {
+	{ MinLevel = 1, NameUA = "Маленький гараж" },
+	{ MinLevel = 2, NameUA = "Великий гараж" },
+	{ MinLevel = 4, NameUA = "Автосалон" },
+	{ MinLevel = 6, NameUA = "Преміум-шоурум" },
+	{ MinLevel = 8, NameUA = "Люкс-центр" },
+}
+
+function GameConfig.showroomTier(level: number): number
+	local tier = 1
+	for i, t in GameConfig.ShowroomTiers do
+		if level >= t.MinLevel then
+			tier = i
+		end
+	end
+	return tier
+end
 
 GameConfig.Garage = {
 	StartSlots = 30,

@@ -27,6 +27,10 @@ local function refresh()
 		return
 	end
 	refs.capacity.Text = ("%d / %d місць зайнято"):format(state.displayedCount, state.displayCapacity)
+	local tierIndex = state.showroomTier or GameConfig.showroomTier(state.displayLevel)
+	local tier = GameConfig.ShowroomTiers[tierIndex]
+	local nextTier = GameConfig.ShowroomTiers[tierIndex + 1]
+	refs.building.Text = "Будівля: " .. tier.NameUA .. (if nextTier then ("   ·   далі: %s (рівень %d)"):format(nextTier.NameUA, nextTier.MinLevel) else "   ·   максимум")
 	refs.income.Text = ("Дохід: %s / хв (база %s + шоурум)"):format(
 		Format.money(state.incomePerMinute),
 		Format.money(GameConfig.Economy.BaseIncomePerMinute)
@@ -36,8 +40,9 @@ local function refresh()
 	end
 	if state.nextDisplayCost then
 		refs.next.Text = ("Наступний рівень: %d місць"):format(state.nextDisplayCapacity)
-		refs.buy.Text = "РОЗШИРИТИ ЗА " .. Format.moneyShort(state.nextDisplayCost)
-		C.setEnabled(refs.buy, state.cash >= state.nextDisplayCost and not busy)
+		local free = GameConfig.freeUpgrades()
+		refs.buy.Text = if free then "РОЗШИРИТИ (ТЕСТ: БЕЗКОШТОВНО)" else "РОЗШИРИТИ ЗА " .. Format.moneyShort(state.nextDisplayCost)
+		C.setEnabled(refs.buy, (free or state.cash >= state.nextDisplayCost) and not busy)
 	else
 		refs.next.Text = "Максимальний розмір шоуруму"
 		refs.buy.Text = "МАКСИМУМ"
@@ -46,7 +51,7 @@ local function refresh()
 end
 
 local function build()
-	modal = C.modal("ShowroomUI", "ШОУРУМ", Vector2.new(620, 420), 11)
+	modal = C.modal("ShowroomUI", "ШОУРУМ", Vector2.new(620, 450), 11)
 	local content = modal.content
 	local body = create("Frame", {
 		Position = UDim2.fromOffset(24, 18),
@@ -55,11 +60,12 @@ local function build()
 		Parent = content,
 	}, { C.list(Enum.FillDirection.Vertical, 10) })
 
-	C.label({ LayoutOrder = 1, Text = "Виставлені авто приносять пасивний дохід і приваблюють покупців. Розширюйте шоурум, щоб показувати більше машин.", TextColor3 = Theme.Muted, TextSize = 14, Size = UDim2.new(1, 0, 0, 40), Parent = body })
-	refs.capacity = C.label({ LayoutOrder = 2, Text = "", Font = Theme.FontBlack, TextSize = 28, Size = UDim2.new(1, 0, 0, 34), Parent = body })
-	refs.income = C.label({ LayoutOrder = 3, Text = "", TextColor3 = Theme.Money, Font = Theme.FontBold, TextSize = 15, Size = UDim2.new(1, 0, 0, 20), Parent = body })
+	C.label({ LayoutOrder = 10, Text = "Виставлені авто приносять пасивний дохід і приваблюють покупців. Розширюйте шоурум, щоб показувати більше машин.", TextColor3 = Theme.Muted, TextSize = 14, Size = UDim2.new(1, 0, 0, 40), Parent = body })
+	refs.capacity = C.label({ LayoutOrder = 20, Text = "", Font = Theme.FontBlack, TextSize = 28, Size = UDim2.new(1, 0, 0, 34), Parent = body })
+	refs.building = C.label({ LayoutOrder = 21, Text = "", Font = Theme.FontBold, TextColor3 = Theme.Gold, TextSize = 14, Size = UDim2.new(1, 0, 0, 18), Parent = body })
+	refs.income = C.label({ LayoutOrder = 30, Text = "", TextColor3 = Theme.Money, Font = Theme.FontBold, TextSize = 15, Size = UDim2.new(1, 0, 0, 20), Parent = body })
 
-	local dots = create("Frame", { LayoutOrder = 4, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 52), Parent = body }, {
+	local dots = create("Frame", { LayoutOrder = 40, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 52), Parent = body }, {
 		C.list(Enum.FillDirection.Horizontal, 8),
 	})
 	for i, level in GameConfig.DisplayLevels do
@@ -70,7 +76,7 @@ local function build()
 		})
 		levelDots[i] = dot
 	end
-	refs.next = C.label({ LayoutOrder = 5, Text = "", TextSize = 15, Size = UDim2.new(1, 0, 0, 20), Parent = body })
+	refs.next = C.label({ LayoutOrder = 50, Text = "", TextSize = 15, Size = UDim2.new(1, 0, 0, 20), Parent = body })
 
 	refs.buy = C.button({
 		AnchorPoint = Vector2.new(0.5, 1),
