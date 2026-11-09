@@ -45,6 +45,8 @@ local TEMPLATE = {
 	limitedOwned = {}, -- [productKey] = os.time() of the purchase (each limited car once)
 	receipts = {}, -- [PurchaseId] = os.time(), for idempotent ProcessReceipt
 	boosts = { cash = 0, luck = 0 }, -- os.time() when each timed boost ends
+	decor = {}, -- placed plot decorations { id, k = item key, x, z (plot space), r = 0..3, paid }
+	decorNextId = 1,
 	createdAt = 0,
 	lastLogin = 0,
 }

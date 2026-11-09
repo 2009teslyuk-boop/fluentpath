@@ -18,10 +18,10 @@ local function teleport(destination: string)
 end
 
 function HomeController.init()
-	HUDController.addMenuButton(5, "ДОДОМУ", "До свого автосалону", function()
+	HUDController.addMenuButton(6, "ДОДОМУ", "До свого автосалону", function()
 		teleport("home")
 	end)
-	HUDController.addMenuButton(6, "ДО МАРКЕТУ", "Центр карти", function()
+	HUDController.addMenuButton(7, "ДО МАРКЕТУ", "Центр карти", function()
 		teleport("shop")
 	end)
 end

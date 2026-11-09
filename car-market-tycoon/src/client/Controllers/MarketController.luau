@@ -69,7 +69,7 @@ function MarketController.init()
 		folder.AttributeChanged:Connect(refresh)
 		refresh()
 	end)
-	HUDController.addMenuButton(3, "РИНОК", "Індекси цін", function()
+	HUDController.addMenuButton(4, "РИНОК", "Індекси цін", function()
 		if modal.isOpen() then
 			modal.close()
 		else

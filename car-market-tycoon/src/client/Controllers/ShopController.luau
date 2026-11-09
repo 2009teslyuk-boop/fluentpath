@@ -520,7 +520,7 @@ end
 
 function ShopController.init()
 	build()
-	HUDController.addMenuButton(4, "МАГАЗИН", "Колесо та лімітки", function()
+	HUDController.addMenuButton(5, "МАГАЗИН", "Колесо та лімітки", function()
 		if modal.isOpen() then
 			modal.close()
 		else

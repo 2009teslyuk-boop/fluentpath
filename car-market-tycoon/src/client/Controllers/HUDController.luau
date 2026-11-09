@@ -147,7 +147,7 @@ function HUDController.addMenuButton(order: number, title: string, subtitle: str
 		Name = title,
 		Text = "",
 		LayoutOrder = order,
-		Size = UDim2.fromOffset(150, 58),
+		Size = UDim2.fromOffset(150, 54),
 		Parent = menu,
 	}, "secondary", onClick)
 	C.stroke(Theme.Stroke, 1.2).Parent = button
@@ -307,7 +307,7 @@ function HUDController.init()
 		Name = "Menu",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -16, 0.5, 0),
-		Size = UDim2.fromOffset(150, 420),
+		Size = UDim2.fromOffset(150, 480),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, { C.list(Enum.FillDirection.Vertical, 10, Enum.HorizontalAlignment.Right) })

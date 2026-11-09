@@ -97,6 +97,12 @@ function RemoteService.start()
 		end
 		return { ok = true }
 	end)
+	bind("PlaceDecor", function(player, key, x, z, r)
+		return Services.DecorService.place(player, key, x, z, r)
+	end)
+	bind("RemoveDecor", function(player, id)
+		return Services.DecorService.remove(player, id)
+	end)
 	bind("GetSnapshot", function(player)
 		local data = Services.PlayerDataService.getData(player)
 		local inventory = {}

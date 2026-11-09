@@ -124,6 +124,8 @@ GameConfig.RateLimits = {
 	SpinFree = { Count = 2, Per = 3 },
 	PromptProduct = { Count = 3, Per = 5 },
 	Teleport = { Count = 2, Per = 4 },
+	PlaceDecor = { Count = 6, Per = 3 },
+	RemoveDecor = { Count = 6, Per = 3 },
 }
 
 -- XP curve: level n requires XPBase * (n-1)^XPExponent total xp

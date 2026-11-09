@@ -6,7 +6,7 @@ local Net = {}
 
 Net.Functions = {
 	"BuyLot", "SellVehicle", "ToggleDisplay", "BuyDisplayUpgrade", "GetSnapshot",
-	"ApplyTuning", "SetListing", "RespondOffer", "SpinFree", "PromptProduct", "Teleport",
+	"ApplyTuning", "SetListing", "RespondOffer", "SpinFree", "PromptProduct", "Teleport", "PlaceDecor", "RemoveDecor",
 }
 Net.Events = { "StateChanged", "InventoryChanged", "LotRevealed", "Announce", "Notify", "OfferReceived", "SpinResult" }
 

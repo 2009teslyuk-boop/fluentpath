@@ -109,21 +109,54 @@ local function buildTarp(lot: Lot, owner: Player, record, lotCF: CFrame): Model
 	end
 
 	local drape = piece("Drape", V3(W, bodyH, L), CF(0, bodyH / 2, 0), color, { CanCollide = true, CastShadow = true })
-	-- cabin hump: front wedge + box + rear wedge
-	local cabLen = math.max(2, dims.CabEnd - dims.CabStart)
-	local a, b, c = cabLen * 0.3 + 0.2, cabLen * 0.45, cabLen * 0.25 + 0.2
-	local zs = dims.CabStart - 0.2
-	local humpY = bodyH + cabH / 2 - 0.08
-	piece("HumpFront", V3(W - 0.8, cabH, a), CF(0, humpY, zs + a / 2), color, { ClassName = "WedgePart", CastShadow = true })
-	piece("Hump", V3(W - 0.8, cabH, b), CF(0, humpY, zs + a + b / 2), color, { CastShadow = true })
-	piece("HumpRear", V3(W - 0.8, cabH, c), CF(0, humpY, zs + a + b + c / 2) * FLIP, color, { ClassName = "WedgePart", CastShadow = true })
-	piece("Hem", V3(W + 0.45, 0.4, L + 0.45), CF(0, 0.2, 0), darker)
-	for _, z in { -L * 0.3, L * 0.3 } do
-		piece("Strap", V3(W + 0.1, bodyH + 0.06, 0.32), CF(0, bodyH / 2 + 0.02, z), tier.StrapColor)
+	local style = VehicleBuilder.getStyle(record.modelKey)
+	local clothTemplate, origin = VehicleBuilder.packPart(style.Archetype, "Tarp")
+	local hemOffset = 0.12
+	if clothTemplate and origin then
+		-- smooth cloth mesh draped over the car (the box stays as an invisible collider)
+		drape.Transparency = 1
+		local cloth = VehicleBuilder.placeMesh(clothTemplate, origin, VehicleBuilder.meshScale(record.modelKey), model, 0)
+		cloth.Name = "Cloth"
+		cloth.Color = color
+		cloth.Material = tier.Material
+		cloth.CanCollide = false
+		cloth:SetAttribute("Sway", 1)
+		hemOffset = 0.35
+	else
+		-- block fallback: body cover + cabin hump + folds
+		local cabLen = math.max(2, dims.CabEnd - dims.CabStart)
+		local a, b, c = cabLen * 0.3 + 0.2, cabLen * 0.45, cabLen * 0.25 + 0.2
+		local zs = dims.CabStart - 0.2
+		local humpY = bodyH + cabH / 2 - 0.08
+		piece("HumpFront", V3(W - 0.8, cabH, a), CF(0, humpY, zs + a / 2), color, { ClassName = "WedgePart", CastShadow = true })
+		piece("Hump", V3(W - 0.8, cabH, b), CF(0, humpY, zs + a + b / 2), color, { CastShadow = true })
+		piece("HumpRear", V3(W - 0.8, cabH, c), CF(0, humpY, zs + a + b + c / 2) * FLIP, color, { ClassName = "WedgePart", CastShadow = true })
+		for _ = 1, 6 do
+			local z = (rng:NextNumber() - 0.5) * L * 0.8
+			piece("Fold", V3(W * (0.4 + rng:NextNumber() * 0.5), 0.12, 0.35 + rng:NextNumber() * 0.4), CF((rng:NextNumber() - 0.5) * W * 0.3, bodyH + 0.02, z) * CFrame.Angles(0, (rng:NextNumber() - 0.5) * 0.9, (rng:NextNumber() - 0.5) * 0.08), darker, { CanCollide = false })
+		end
+		for _, z in { -L * 0.3, L * 0.3 } do
+			piece("Strap", V3(W + 0.1, bodyH + 0.06, 0.32), CF(0, bodyH / 2 + 0.02, z), tier.StrapColor, { CanCollide = false })
+		end
 	end
-	for _ = 1, 3 do
-		local z = (rng:NextNumber() - 0.5) * L * 0.7
-		piece("Fold", V3(W * (0.5 + rng:NextNumber() * 0.4), 0.12, 0.45), CF(0, bodyH + 0.02, z) * CFrame.Angles(0, (rng:NextNumber() - 0.5) * 0.5, (rng:NextNumber() - 0.5) * 0.06), darker)
+	-- loose hem flaps around the bottom: every client sways them in the wind (attribute Flap)
+	local flapH = math.min(1.4, bodyH * 0.55)
+	local function flap(cf: CFrame, width: number)
+		local shade = color:Lerp(Color3.new(0, 0, 0), rng:NextNumber() * 0.2)
+		local f = piece("Flap", V3(width, flapH, 0.07), cf * CF(0, 0, 0) * CFrame.Angles(rng:NextNumber() * 0.2 - 0.05, 0, 0), shade, { CanCollide = false })
+		f:SetAttribute("Flap", 1)
+	end
+	local count = math.max(3, math.floor(L / 2.4))
+	for _, side in { -1, 1 } do
+		for k = 1, count do
+			local z = -L / 2 + (k - 0.5) * (L / count)
+			flap(CF(side * (W / 2 + hemOffset), flapH / 2 + 0.02, z) * CFrame.Angles(0, side * math.pi / 2, 0), L / count * 0.95)
+		end
+	end
+	for _, zSide in { -1, 1 } do
+		for k = -1, 1 do
+			flap(CF(k * W / 3, flapH / 2 + 0.02, zSide * (L / 2 + hemOffset)) * (if zSide > 0 then CFrame.identity else FLIP), W / 3 * 0.95)
+		end
 	end
 	if tier.TrimColor then
 		local trim = Build.part(model, "Trim", V3(W + 0.5, 0.08, L + 0.5), CF(0, 0.42, 0), tier.TrimColor, Enum.Material.Neon, { CanCollide = false, CanQuery = false })
@@ -206,6 +239,7 @@ local function buildTarp(lot: Lot, owner: Player, record, lotCF: CFrame): Model
 	model:SetAttribute("Price", lot.price)
 	model:SetAttribute("Hint", silhouetteHint(dims))
 	model:SetAttribute("OwnerUserId", owner.UserId)
+	model:SetAttribute("IsTarp", true)
 	model:PivotTo(lotCF)
 	return model
 end

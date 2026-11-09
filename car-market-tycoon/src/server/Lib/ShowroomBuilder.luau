@@ -11,12 +11,13 @@ local CYL_UP = CFrame.Angles(0, 0, math.pi / 2) -- cylinder axis X -> Y
 local ShowroomBuilder = {}
 
 local ROWS_Z = { -73, -52, -31, -10 }
+local COLUMN_ORDER = { 5, 6, 4, 7, 3, 8, 2, 9, 1, 10 } -- spots fill from the centre outwards
 
 local function spotPositions(count: number)
 	local list = {}
 	for i = 1, count do
 		local row = math.ceil(i / 10)
-		local col = (i - 1) % 10 + 1
+		local col = COLUMN_ORDER[(i - 1) % 10 + 1]
 		table.insert(list, Vector3.new((col - 5.5) * 10, 0, ROWS_Z[row]))
 	end
 	return list
@@ -65,11 +66,11 @@ function ShowroomBuilder.build(tier: number, base: CFrame, accent: Color3, owner
 	local name = string.upper(ownerName)
 
 	if tier == 1 then
-		-- small corrugated-metal garage around spots 1-2 ------------------------------------------
-		local x0, x1, z0, z1, h = -52, -28, -83, -62, 8
+		-- small corrugated-metal garage in the centre (spots 1-2) ------------------------------------------
+		local x0, x1, z0, z1, h = -12, 12, -83, -62, 8 -- centred on spots 1-2
 		local metal = Color3.fromRGB(122, 126, 132)
 		box("GarageFloor", x0, x1, z0, z1, 0.28, 0.34, Color3.fromRGB(104, 104, 106), M.Concrete)
-		box("OilStain", -43, -38, -77, -70, 0.34, 0.35, Color3.fromRGB(60, 58, 56), M.Concrete, { CanCollide = false })
+		box("OilStain", -3, 2, -77, -70, 0.34, 0.35, Color3.fromRGB(60, 58, 56), M.Concrete, { CanCollide = false })
 		box("WallLeft", x0 - 0.5, x0, z0, z1, 0.3, h, metal, M.CorrodedMetal)
 		box("WallRight", x1, x1 + 0.5, z0, z1, 0.3, h, metal, M.CorrodedMetal)
 		box("WallBack", x0 - 0.5, x1 + 0.5, z1, z1 + 0.5, 0.3, h, metal, M.CorrodedMetal)
@@ -81,19 +82,19 @@ function ShowroomBuilder.build(tier: number, base: CFrame, accent: Color3, owner
 			box("DoorRail", x - 0.15, x + 0.15, z0 - 0.15, z0 + 0.15, 0.3, h - 1.5, Color3.fromRGB(70, 70, 74), M.Metal)
 		end
 		-- workbench, pegboard with tools, tyres, barrel
-		box("Workbench", -51, -47.5, -63.6, -62.5, 0.3, 3.2, Color3.fromRGB(120, 86, 56), M.Wood)
-		box("Pegboard", -51.4, -44, -62.45, -62.35, 3.8, 6.6, Color3.fromRGB(150, 116, 80), M.WoodPlanks)
+		box("Workbench", -11.5, -8.6, -63.6, -62.5, 0.3, 3.2, Color3.fromRGB(120, 86, 56), M.Wood)
+		box("Pegboard", -11.4, -4, -62.45, -62.35, 3.8, 6.6, Color3.fromRGB(150, 116, 80), M.WoodPlanks)
 		for i, c in { Color3.fromRGB(200, 40, 40), Color3.fromRGB(240, 200, 40), Color3.fromRGB(40, 110, 200), Color3.fromRGB(60, 60, 64) } do
-			box("Tool", -50.6 + i * 1.4, -50.3 + i * 1.4, -62.6, -62.45, 4.4, 6, c, M.SmoothPlastic, { CanCollide = false })
+			box("Tool", -10.6 + i * 1.4, -10.3 + i * 1.4, -62.6, -62.45, 4.4, 6, c, M.SmoothPlastic, { CanCollide = false })
 		end
 		for k = 0, 2 do
-			P("Tyre", V3(0.9, 2.4, 2.4), CF(-50.6, 0.75 + k * 0.92, -70) * CYL_UP, Color3.fromRGB(24, 24, 26), M.SmoothPlastic, { Shape = Enum.PartType.Cylinder })
+			P("Tyre", V3(0.9, 2.4, 2.4), CF(-10.6, 0.75 + k * 0.92, -70) * CYL_UP, Color3.fromRGB(24, 24, 26), M.SmoothPlastic, { Shape = Enum.PartType.Cylinder })
 		end
-		P("Barrel", V3(2.6, 1.8, 1.8), CF(-29.6, 1.6, -66) * CYL_UP, Color3.fromRGB(190, 40, 30), M.Metal, { Shape = Enum.PartType.Cylinder })
-		P("Cable", V3(0.08, 1.2, 0.08), CF(-40, h - 0.6, -72.5), Color3.fromRGB(20, 20, 20), M.SmoothPlastic, { CanCollide = false })
-		local bulb = P("Bulb", V3(0.7, 0.7, 0.7), CF(-40, h - 1.4, -72.5), Color3.fromRGB(255, 220, 160), M.Neon, { Shape = Enum.PartType.Ball, CanCollide = false })
+		P("Barrel", V3(2.6, 1.8, 1.8), CF(10.4, 1.6, -66) * CYL_UP, Color3.fromRGB(190, 40, 30), M.Metal, { Shape = Enum.PartType.Cylinder })
+		P("Cable", V3(0.08, 1.2, 0.08), CF(0, h - 0.6, -72.5), Color3.fromRGB(20, 20, 20), M.SmoothPlastic, { CanCollide = false })
+		local bulb = P("Bulb", V3(0.7, 0.7, 0.7), CF(0, h - 1.4, -72.5), Color3.fromRGB(255, 220, 160), M.Neon, { Shape = Enum.PartType.Ball, CanCollide = false })
 		Build.pointLight(bulb, Color3.fromRGB(255, 214, 160), 24, 1.6)
-		sign("ГАРАЖ " .. name, 18, 2.4, CF(-40, h + 1.8, z0 - 1.4), Color3.fromRGB(255, 220, 160), accent)
+		sign("ГАРАЖ " .. name, 18, 2.4, CF(0, h + 1.8, z0 - 1.4), Color3.fromRGB(255, 220, 160), accent)
 	elseif tier == 2 then
 		-- large brick garage with five roller-door bays (row 1) -------------------------------------
 		local x0, x1, z0, z1, h = -56, 56, -86, -62, 10 -- front kept behind the buyer lane (z = -83.5)

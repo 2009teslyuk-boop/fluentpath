@@ -60,6 +60,7 @@ end
 -- Shake (suspense) + lift + fly away. Purely local, the server deletes the tarp afterwards.
 local function animateTarp(tarp: Model, rarityKey: string, withSuspense: boolean)
 	local rarity = RarityConfig.get(rarityKey)
+	tarp:SetAttribute("ClientRevealing", true) -- stops the cloth sway for this tarp
 	local parts = {}
 	for _, d in tarp:GetDescendants() do
 		if d:IsA("BasePart") then

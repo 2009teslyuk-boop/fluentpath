@@ -323,6 +323,8 @@ function VehicleBuilder.getStyle(modelKey: string)
 	local model = VehicleDatabase.getModel(modelKey)
 	local base = VehicleBuilder.Archetypes[model and model.Body or "sedan"] or VehicleBuilder.Archetypes.sedan
 	local s = table.clone(base)
+	s.Archetype = model and model.Body or "sedan"
+	s.BaseW, s.BaseL, s.BaseH = base.W, base.L, base.H
 	if model and model.Style then
 		for k, v in model.Style do
 			s[k] = v
@@ -549,6 +551,40 @@ local function findTemplate(modelKey: string): Model?
 	return nil
 end
 
+-- Smooth mesh pack (assets/CarMeshes.obj imported into ReplicatedStorage.Assets.CarMeshes).
+function VehicleBuilder.packPart(archetype: string, partName: string): (MeshPart?, BasePart?)
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local pack = assets and assets:FindFirstChild("CarMeshes")
+	if not pack then
+		return nil, nil
+	end
+	local part = pack:FindFirstChild(archetype .. "__" .. partName, true)
+	local origin = pack:FindFirstChild("Origin", true)
+	if part and part:IsA("MeshPart") and origin and origin:IsA("BasePart") then
+		return part, origin
+	end
+	return nil, nil
+end
+
+-- Clones a pack mesh into `parent`, scaled per axis and placed relative to the car origin.
+function VehicleBuilder.placeMesh(template: MeshPart, origin: BasePart, scale: Vector3, parent: Instance, yOffset: number): MeshPart
+	local m = template:Clone()
+	local rel = origin.CFrame:ToObjectSpace(template.CFrame)
+	m.Size = template.Size * scale
+	m.CFrame = CFrame.new(rel.Position * scale + Vector3.new(0, yOffset, 0)) * rel.Rotation
+	m.Anchored = true
+	m.CanTouch = false
+	m.CanQuery = false
+	m.CastShadow = true
+	m.Parent = parent
+	return m
+end
+
+function VehicleBuilder.meshScale(modelKey: string): Vector3
+	local s = VehicleBuilder.getStyle(modelKey)
+	return Vector3.new(s.W / s.BaseW, s.H / s.BaseH, s.L / s.BaseL)
+end
+
 -- options: { lowDetail: boolean? }
 function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 	local template = findTemplate(record.modelKey)
@@ -676,6 +712,9 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 	local Wm = s.W
 	local twS = s.TW * S
 	local breaks = g.breaks
+	local meshBody, meshOrigin = VehicleBuilder.packPart(s.Archetype, "Body")
+	local useMesh = meshBody ~= nil and meshOrigin ~= nil
+	local surfaceLift = if useMesh then 0.024 else 0 -- details sit on top of the rounded mesh surface
 	for i = 1, #breaks - 1 do
 		local z0, z1 = breaks[i], breaks[i + 1]
 		local zc = (z0 + z1) / 2
@@ -685,10 +724,12 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 		local lift = if zc < 0.12 or zc > s.L - 0.12 then 0.06 else 0
 		local bottom = if arch then yl(arch) else yl(s.Clr + lift)
 		local low = math.min(t0, t1)
-		box("body", w, zl(z0), zl(z1), bottom, low)
-		if math.abs(t1 - t0) > 0.01 then
-			flush("body")
-			slope("body", w, zl(z0), zl(z1), math.max(low, bottom), t0, t1)
+		if not useMesh then
+			box("body", w, zl(z0), zl(z1), bottom, low)
+			if math.abs(t1 - t0) > 0.01 then
+				flush("body")
+				slope("body", w, zl(z0), zl(z1), math.max(low, bottom), t0, t1)
+			end
 		end
 		if arch then
 			box("tub", w - 2 * (twS + 0.1), zl(z0), zl(z1), yl(s.Clr + 0.04), bottom)
@@ -703,7 +744,7 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 	local GH = s.GH or 0.8
 	for i = 1, #breaks - 1 do
 		local z0, z1 = breaks[i], breaks[i + 1]
-		if z0 >= s.WS0 - 1e-4 and z1 <= s.RW1 + 1e-4 then
+		if not useMesh and z0 >= s.WS0 - 1e-4 and z1 <= s.RW1 + 1e-4 then
 			local zc = (z0 + z1) / 2
 			local gw = Wm * S * g.widthF(zc) * GH
 			local gb = yl(math.min(g.bodyTop(z0), g.bodyTop(z1))) - 0.05
@@ -737,7 +778,7 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 	local roofColor = if s.Canopy then nil elseif s.RoofBlack then COLORS.Trim else nil
 	for i = 1, #breaks - 1 do
 		local z0, z1 = breaks[i], breaks[i + 1]
-		if z0 >= s.WS1 - 1e-4 and z1 <= s.R1 + 1e-4 then
+		if not useMesh and z0 >= s.WS1 - 1e-4 and z1 <= s.R1 + 1e-4 then
 			local gw = Wm * S * g.widthF((z0 + z1) / 2) * GH
 			local p0 = V3(0, yl(g.cabinTop(z0)) + 0.06, zl(z0))
 			local p1 = V3(0, yl(g.cabinTop(z1)) + 0.06, zl(z1))
@@ -747,6 +788,42 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 				lineBetween("Roof", p0, p1, gw + 0.1, 0.12, roofColor, if roofColor then PLASTIC else nil, { CastShadow = true })
 			end
 		end
+	end
+
+	if useMesh then
+		local scale = VehicleBuilder.meshScale(record.modelKey)
+		local bodyMesh = VehicleBuilder.placeMesh(meshBody :: MeshPart, meshOrigin :: BasePart, scale, car, yOff)
+		bodyMesh.Name = "BodyShell"
+		bodyMesh.Color = paintColor
+		bodyMesh.Material = paintMaterial
+		bodyMesh.Reflectance = paintRefl
+		bodyMesh.CanCollide = true
+		local glassMesh = VehicleBuilder.packPart(s.Archetype, "Glass")
+		if glassMesh then
+			local m = VehicleBuilder.placeMesh(glassMesh, meshOrigin :: BasePart, scale, car, yOff)
+			m.Name = "GlassShell"
+			m.Color = COLORS.Glass
+			m.Material = GLASS
+			m.Transparency = glassTransparency
+			m.Reflectance = glassRefl
+		end
+		local roofMesh = VehicleBuilder.packPart(s.Archetype, "Roof")
+		if roofMesh then
+			local m = VehicleBuilder.placeMesh(roofMesh, meshOrigin :: BasePart, scale, car, yOff)
+			m.Name = "RoofShell"
+			if s.Canopy then
+				m.Color = COLORS.Glass
+				m.Material = GLASS
+				m.Transparency = 0.15
+				m.Reflectance = 0.35
+			else
+				m.Color = roofColor or paintColor
+				m.Material = if roofColor then PLASTIC else paintMaterial
+				m.Reflectance = if roofColor then 0.05 else paintRefl
+			end
+		end
+		-- dark underbody so the open shell never shows through from below
+		dark("Underbody", V3(Wm * S * 0.88, 0.06, (s.L - 0.3) * S), CF(0, yl(s.Clr + 0.03), 0), "Part", COLORS.Trim)
 	end
 
 	for _, side in { -1, 1 } do
@@ -792,7 +869,7 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 	for i, z in seams do
 		if z > 0 and z < s.L then
 			local top = yl(g.bodyTop(z)) - 0.06
-			local bottom = yl(s.Clr) + 0.08
+			local bottom = if useMesh then yl(s.Clr + (g.bodyTop(z) - s.Clr) * 0.45) else yl(s.Clr) + 0.08
 			dark("DoorSeam", V3(Wm * S * g.widthF(z) + 0.02, top - bottom, 0.04), CF(0, (top + bottom) / 2, zl(z)), "Part", COLORS.Trim)
 			if i < #seams then
 				local hz = seams[i + 1] - 0.22
@@ -835,15 +912,15 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 	-- Lights -----------------------------------------------------------------------------------
 	-- a piece lying on the body surface between two z positions (metres)
 	local function onSurface(name, zA, zB, xCenter, width, lift, color, material, thickness)
-		local p0 = V3(xCenter, yl(g.bodyTop(zA) + lift), zl(zA))
-		local p1 = V3(xCenter, yl(g.bodyTop(zB) + lift), zl(zB))
+		local p0 = V3(xCenter, yl(g.bodyTop(zA) + lift + surfaceLift), zl(zA))
+		local p1 = V3(xCenter, yl(g.bodyTop(zB) + lift + surfaceLift), zl(zB))
 		return lineBetween(name, p0, p1, width, thickness or 0.06, color, material, { Reflectance = 0 })
 	end
 	local function lampDisk(name, zm, xCenter, diameter, color)
 		-- round lamp lying on the surface, facing along the surface normal
 		local zA, zB = zm - 0.05, zm + 0.05
-		local p0 = V3(xCenter, yl(g.bodyTop(zA)), zl(zA))
-		local p1 = V3(xCenter, yl(g.bodyTop(zB)), zl(zB))
+		local p0 = V3(xCenter, yl(g.bodyTop(zA) + surfaceLift), zl(zA))
+		local p1 = V3(xCenter, yl(g.bodyTop(zB) + surfaceLift), zl(zB))
 		local d = (p1 - p0).Unit
 		local normal = V3(0, -d.Z, d.Y)
 		if normal.Y < 0 then
@@ -1154,7 +1231,7 @@ function VehicleBuilder.build(record, options: { lowDetail: boolean? }?)
 	-- side skirts between the wheel arches
 	if rearArchStartZ > frontArchEndZ then
 		local zc = (frontArchEndZ + rearArchStartZ) / 2
-		dark("SideSkirt", V3(Wm * S * g.widthF(zc) + 0.06, 0.1 * S, (rearArchStartZ - frontArchEndZ) * S), CF(0, yl(clr + 0.06), zl(zc)), "Part", COLORS.Trim)
+		dark("SideSkirt", V3(Wm * S * g.widthF(zc) * (if useMesh then 0.95 else 1) + 0.06, 0.1 * S, (rearArchStartZ - frontArchEndZ) * S), CF(0, yl(clr + 0.06), zl(zc)), "Part", COLORS.Trim)
 	end
 
 	-- fuel cap on the right rear quarter

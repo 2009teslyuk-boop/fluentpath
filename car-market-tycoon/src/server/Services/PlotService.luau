@@ -20,6 +20,7 @@ PlotService.FloorY = 0.3
 local SHOWROOM_ROWS_Z = { -73, -52, -31, -10 }
 local SPOT_COLUMNS = 10
 local SPOT_SPACING = 10
+local COLUMN_ORDER = { 5, 6, 4, 7, 3, 8, 2, 9, 1, 10 } -- spots fill from the centre outwards
 local YARD_ROWS_Z = { 36, 64 } -- row 1 faces +Z (towards the aisle), row 2 faces -Z
 local SPAWN_LOCAL = CF(0, 3.5, 10)
 
@@ -76,7 +77,7 @@ end
 
 function PlotService.spotLocalCFrame(spotIndex: number): CFrame
 	local row = math.ceil(spotIndex / SPOT_COLUMNS)
-	local col = (spotIndex - 1) % SPOT_COLUMNS + 1
+	local col = COLUMN_ORDER[(spotIndex - 1) % SPOT_COLUMNS + 1]
 	local x = (col - (SPOT_COLUMNS + 1) / 2) * SPOT_SPACING
 	return CF(x, PlotService.FloorY, SHOWROOM_ROWS_Z[math.clamp(row, 1, #SHOWROOM_ROWS_Z)])
 end
@@ -146,9 +147,6 @@ local function buildPlot(index: number, parent: Instance): Plot
 		for _, z in { 30, 70 } do -- the showroom building has its own lights
 			Build.lamp(model, base * CF(x, 0.2, z) * CFrame.Angles(0, if x < 0 then -math.pi / 2 else math.pi / 2, 0), Color3.fromRGB(255, 236, 205))
 		end
-	end
-	for _, x in { -40, -30, 30, 40 } do
-		Build.tree(model, (base * CF(x, 0.2, -D / 2 + 5)).Position, 0.6)
 	end
 
 	local yard = Build.folder(model, "Yard")
@@ -265,6 +263,10 @@ function PlotService.release(player: Player)
 	plot.signLabel.Text = "ВІЛЬНА ДІЛЯНКА"
 	plot.yard:ClearAllChildren()
 	plot.showroom:ClearAllChildren()
+	local decor = plot.model:FindFirstChild("Decor")
+	if decor then
+		decor:ClearAllChildren()
+	end
 	if plot.building then
 		plot.building:Destroy()
 		plot.building = nil

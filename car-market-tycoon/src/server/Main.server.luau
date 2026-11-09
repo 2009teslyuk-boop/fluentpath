@@ -17,6 +17,7 @@ local ORDER = {
 	"CustomizationService",
 	"SalesService",
 	"ShopService",
+	"DecorService",
 	"RemoteService",
 }
 
@@ -45,6 +46,7 @@ PlayerDataService.ProfileLoaded:Connect(function(player: Player)
 	Services.VehicleService.setupPlayer(player)
 	Services.SalesService.setupPlayer(player)
 	Services.ShopService.setupPlayer(player)
+	Services.DecorService.setupPlayer(player)
 	Services.EconomyService.pushState(player)
 	Services.VehicleService.pushInventory(player)
 end)
@@ -53,6 +55,7 @@ PlayerDataService.ProfileReleasing:Connect(function(player: Player)
 	Services.YardService.cleanupPlayer(player)
 	Services.SalesService.cleanupPlayer(player)
 	Services.ShopService.cleanupPlayer(player)
+	Services.DecorService.cleanupPlayer(player)
 	Services.VehicleService.cleanupPlayer(player)
 end)
 

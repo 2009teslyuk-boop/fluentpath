@@ -144,6 +144,7 @@ function EconomyService.buildState(player: Player)
 		autoSell = data.settings.autoSell,
 		listingsCount = Util.count(data.listings),
 		showroomTier = GameConfig.showroomTier(data.displayLevel),
+		decorCount = #data.decor,
 	}
 end
 
